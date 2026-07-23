@@ -31,6 +31,14 @@ require_once PIC_PLUGIN_DIR . 'src/Plugin.php';
 require_once PIC_PLUGIN_DIR . 'src/CheckoutDetection.php';
 require_once PIC_PLUGIN_DIR . 'src/AssetEnqueue.php';
 require_once PIC_PLUGIN_DIR . 'src/Shortcode.php';
+require_once PIC_PLUGIN_DIR . 'src/CouncilData.php';
+require_once PIC_PLUGIN_DIR . 'src/Controllers/CouncilsController.php';
+require_once PIC_PLUGIN_DIR . 'src/Controllers/TemplatesController.php';
+require_once PIC_PLUGIN_DIR . 'src/Controllers/CheckUserController.php';
+require_once PIC_PLUGIN_DIR . 'src/Controllers/SessionController.php';
+require_once PIC_PLUGIN_DIR . 'src/Controllers/ProfileController.php';
+require_once PIC_PLUGIN_DIR . 'src/Controllers/ConfigController.php';
+require_once PIC_PLUGIN_DIR . 'src/REST_Router.php';
 require_once PIC_PLUGIN_DIR . 'src/Admin/SettingsPage.php';
 
 register_activation_hook(__FILE__, ['PlanningIndexCheckout', 'activate']);

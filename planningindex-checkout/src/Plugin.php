@@ -33,6 +33,7 @@ class PlanningIndexCheckout
         PIC_CheckoutDetection::init();
         PIC_AssetEnqueue::init();
         PIC_Shortcode::init();
+        PIC_REST_Router::init();
         PIC_Admin_SettingsPage::init();
     }
 
