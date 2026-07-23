@@ -52,7 +52,7 @@ const defaultNations = ['England', 'Scotland', 'Wales', 'Northern Ireland'] as c
 const CheckoutContext = createContext<CheckoutContextValue | null>(null);
 
 export function CheckoutProvider({ children }: { children: ReactNode }) {
-  const [step, setStep] = useState<CheckoutStep>(isUserLoggedIn() ? 4 : 1);
+  const [step, setStep] = useState<CheckoutStep>(1);
   const [selectedCouncils, setSelectedCouncils] = useState<string[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo>(defaultBusinessInfo);
@@ -108,7 +108,9 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
         }
 
         // If user is already logged in via WordPress, pre-fill account info
-        // and skip the account creation step entirely.
+        // so the account creation step can be skipped when the user reaches
+        // it. Do NOT jump to step 4 — the user should walk through the
+        // checkout flow from the beginning (council selection).
         if (isUserLoggedIn()) {
           setAccountInfo({
             username: '',
@@ -116,7 +118,6 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
             fullName: '',
             password: '',
           });
-          setStep(4);
         }
       } catch {
         // In dev mode or if the API is unavailable, the fallback data

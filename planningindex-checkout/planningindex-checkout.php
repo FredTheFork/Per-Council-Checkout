@@ -41,6 +41,7 @@ require_once PIC_PLUGIN_DIR . 'src/Controllers/ProfileController.php';
 require_once PIC_PLUGIN_DIR . 'src/Controllers/ConfigController.php';
 require_once PIC_PLUGIN_DIR . 'src/Controllers/LoginController.php';
 require_once PIC_PLUGIN_DIR . 'src/Controllers/CheckoutController.php';
+require_once PIC_PLUGIN_DIR . 'src/Controllers/StripeSessionController.php';
 require_once PIC_PLUGIN_DIR . 'src/REST_Router.php';
 require_once PIC_PLUGIN_DIR . 'src/Admin/SettingsPage.php';
 require_once PIC_PLUGIN_DIR . 'src/PmproHooks.php';
