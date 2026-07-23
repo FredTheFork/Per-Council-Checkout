@@ -56,6 +56,7 @@ const DEV_CONFIG: PicConfig = {
 function getConfig(): PicConfig {
   const cfg = (window as unknown as { PlanningIndexCheckout?: PicConfig }).PlanningIndexCheckout;
   if (!cfg || !cfg.apiBase || !cfg.nonce) {
+    console.warn('[PIC] No valid window.PlanningIndexCheckout config found, using dev fallback. window.PlanningIndexCheckout =', cfg);
     // Even in dev mode, try to extract the level ID from the URL so the
     // hidden form POST targets the right membership level.
     const params = new URLSearchParams(window.location.search);
@@ -65,6 +66,7 @@ function getConfig(): PicConfig {
     }
     return DEV_CONFIG;
   }
+  console.log('[PIC] Config loaded from window.PlanningIndexCheckout:', { apiBase: cfg.apiBase, isLoggedIn: cfg.isLoggedIn, userId: cfg.userId, levelId: cfg.levelId, gateway: cfg.gateway });
   return cfg;
 }
 
@@ -103,14 +105,25 @@ async function request<T>(
     let message = `Request failed (${res.status})`;
     try {
       const err = await res.json();
+      console.error('[PIC] API error response:', err);
       if (err.message) message = err.message;
+      else if (err.data && err.data.message) message = err.data.message;
     } catch {
       // response wasn't JSON
+      console.error('[PIC] Non-JSON error response, status:', res.status);
     }
     throw new Error(message);
   }
 
-  return res.json() as Promise<T>;
+  const json = await res.json() as T;
+  // Check for success: false in the response body (server may return 200
+  // but with success: false and a message field)
+  if (json && typeof json === 'object' && 'success' in json && (json as { success: boolean }).success === false) {
+    const msg = (json as { message?: string }).message || 'Request failed';
+    console.error('[PIC] API returned success: false:', json);
+    throw new Error(msg);
+  }
+  return json;
 }
 
 // --- Response types ---
@@ -373,7 +386,7 @@ export const api = {
     }
     return request<StripeSessionResponse>('/stripe-session', {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: payload,
     });
   },
 

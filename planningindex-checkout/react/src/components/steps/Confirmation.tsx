@@ -83,12 +83,21 @@ export function Confirmation() {
       // Create a Stripe Checkout Session — this returns a Stripe-hosted URL
       // so the user goes straight to checkout.stripe.com, bypassing PMPro's
       // checkout page entirely.
+      console.log('[PIC] Calling createStripeSession with:', {
+        councils: selectedCouncils,
+        templateId: selectedTemplateId || 'standard-planning',
+        businessInfo,
+        accountInfo: accountInfo ? { username: accountInfo.username, email: accountInfo.email } : null,
+      });
+
       const result = await api.createStripeSession({
         councils: selectedCouncils,
         templateId: selectedTemplateId || 'standard-planning',
         businessInfo,
         accountInfo,
       });
+
+      console.log('[PIC] createStripeSession result:', result);
 
       if (!result.success || !result.stripeUrl) {
         throw new Error(result.message || 'Unable to start Stripe checkout.');
@@ -97,6 +106,7 @@ export function Confirmation() {
       // Redirect to Stripe Checkout
       window.location.href = result.stripeUrl;
     } catch (err) {
+      console.error('[PIC] checkout error:', err);
       const message = err instanceof Error ? err.message : 'An error occurred during checkout.';
       setError(message);
       setLoading(false);
