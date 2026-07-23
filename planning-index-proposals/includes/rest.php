@@ -2,6 +2,23 @@
 if (!defined('ABSPATH')) {
     exit;
 }
+
+// Self-contained fallback so this plugin no longer depends on
+// pmpro-per-council being active. If the old plugin is loaded, its
+// version of this function takes precedence (PHP skips redefining).
+if (!function_exists('pmpc_should_use_settings')) {
+    function pmpc_should_use_settings($user_id) {
+        if ($user_id <= 0) {
+            return false;
+        }
+        $settings_data = get_user_meta($user_id, '_pi_business_info', true);
+        if (!is_array($settings_data)) {
+            return false;
+        }
+        return !empty($settings_data['settings_updated_at']);
+    }
+}
+
 // CRITICAL: Ensure no session/checkout data interferes with Settings
 add_action('rest_api_init', function() {
     // Guard against early execution when core functions aren't loaded yet
