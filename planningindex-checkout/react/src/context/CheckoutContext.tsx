@@ -108,6 +108,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
         }
 
         // If user is already logged in via WordPress, pre-fill account info
+        // and skip the account creation step entirely.
         if (isUserLoggedIn()) {
           setAccountInfo({
             username: '',
@@ -115,6 +116,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
             fullName: '',
             password: '',
           });
+          setStep(4);
         }
       } catch {
         // In dev mode or if the API is unavailable, the fallback data

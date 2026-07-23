@@ -1,5 +1,6 @@
 import { Check } from 'lucide-react';
 import type { CheckoutStep } from '@/types';
+import { isLoggedIn as isUserLoggedIn } from '@/lib/api';
 
 const steps: { id: CheckoutStep; label: string; description: string }[] = [
   { id: 1, label: 'Councils', description: 'Select councils' },
@@ -15,12 +16,17 @@ interface StepIndicatorProps {
 }
 
 export function StepIndicator({ currentStep, onStepClick, maxReachedStep }: StepIndicatorProps) {
+  const loggedIn = isUserLoggedIn();
+
   return (
     <nav aria-label="Checkout progress" className="w-full">
       <div className="flex items-center justify-between">
         {steps.map((s, idx) => {
-          const isComplete = s.id < currentStep;
-          const isCurrent = s.id === currentStep;
+          // When logged in, step 3 (Account) is auto-completed — show it
+          // with a checkmark and make it clickable to revisit, but never
+          // the "current" step.
+          const isComplete = loggedIn && s.id === 3 ? true : s.id < currentStep;
+          const isCurrent = (loggedIn && s.id === 3) ? false : s.id === currentStep;
           const isAccessible = s.id <= maxReachedStep;
 
           return (

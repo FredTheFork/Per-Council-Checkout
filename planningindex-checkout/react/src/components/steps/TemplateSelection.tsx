@@ -1,5 +1,6 @@
 import { Check, ArrowRight, ArrowLeft, FileText } from 'lucide-react';
 import { useCheckout } from '@/context/CheckoutContext';
+import { isLoggedIn as isUserLoggedIn } from '@/lib/api';
 import { PriceSummary } from '@/components/PriceSummary';
 
 const accentClasses: Record<string, { bg: string; text: string; ring: string; badge: string }> = {
@@ -81,11 +82,11 @@ export function TemplateSelection() {
           Back to Councils
         </button>
         <button
-          onClick={() => setStep(3)}
+          onClick={() => setStep(isUserLoggedIn() ? 4 : 3)}
           disabled={!canProceedFromStep(2)}
           className="btn-primary"
         >
-          Continue to Account
+          {isUserLoggedIn() ? 'Continue to Confirm' : 'Continue to Account'}
           <ArrowRight className="h-4 w-4" />
         </button>
       </div>

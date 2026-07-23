@@ -168,14 +168,18 @@ export function Confirmation() {
 
             <ReviewItem icon={<User className="h-4 w-4" />} label="Account">
               <p className="text-sm font-medium text-slate-700">
-                {accountInfo?.fullName || 'Not set'} · {accountInfo?.email || ''}
+                {isUserLoggedIn()
+                  ? (accountInfo?.fullName || accountInfo?.email || 'Logged in')
+                  : `${accountInfo?.fullName || 'Not set'} · ${accountInfo?.email || ''}`}
               </p>
-              <button
-                onClick={() => setStep(3)}
-                className="text-xs font-semibold text-brand-600 hover:text-brand-700"
-              >
-                Edit account
-              </button>
+              {!isUserLoggedIn() && (
+                <button
+                  onClick={() => setStep(3)}
+                  className="text-xs font-semibold text-brand-600 hover:text-brand-700"
+                >
+                  Edit account
+                </button>
+              )}
             </ReviewItem>
           </div>
         </div>
@@ -279,9 +283,9 @@ export function Confirmation() {
         )}
 
         <div className="mt-6 flex items-center justify-between">
-          <button onClick={() => setStep(3)} className="btn-ghost">
+          <button onClick={() => setStep(isUserLoggedIn() ? 2 : 3)} className="btn-ghost">
             <ArrowLeft className="h-4 w-4" />
-            Back to Account
+            Back to {isUserLoggedIn() ? 'Templates' : 'Account'}
           </button>
           <button onClick={handleComplete} disabled={loading} className="btn-primary">
             {loading ? (

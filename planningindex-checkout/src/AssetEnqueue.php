@@ -126,10 +126,18 @@ class PIC_AssetEnqueue
             }
         }
 
+        $checkout_url = '';
+        if (function_exists('pmpro_url')) {
+            $checkout_url = pmpro_url('checkout');
+        }
+        if (empty($checkout_url)) {
+            $checkout_url = home_url('/membership-checkout/');
+        }
+
         $config = [
             'apiBase' => esc_url_raw(rest_url(PIC_REST_NAMESPACE)),
             'nonce' => wp_create_nonce('wp_rest'),
-            'checkoutUrl' => function_exists('pmpro_url') ? pmpro_url('checkout') : '',
+            'checkoutUrl' => esc_url_raw($checkout_url),
             'checkoutNonce' => function_exists('wp_create_nonce') ? wp_create_nonce('pmpro_checkout_nonce') : '',
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'isLoggedIn' => is_user_logged_in(),

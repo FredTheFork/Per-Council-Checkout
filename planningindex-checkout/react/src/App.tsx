@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { CheckoutProvider, useCheckout } from '@/context/CheckoutContext';
 import { Header } from '@/components/Header';
 import { StepIndicator } from '@/components/StepIndicator';
@@ -6,11 +6,21 @@ import { CouncilSelection } from '@/components/steps/CouncilSelection';
 import { TemplateSelection } from '@/components/steps/TemplateSelection';
 import { AccountCreation } from '@/components/steps/AccountCreation';
 import { Confirmation } from '@/components/steps/Confirmation';
+import { isLoggedIn as isUserLoggedIn } from '@/lib/api';
 import type { CheckoutStep } from '@/types';
 
 function CheckoutFlow() {
   const { step, setStep, canProceedFromStep } = useCheckout();
   const [maxReachedStep, setMaxReachedStep] = useState<CheckoutStep>(1);
+  const loggedIn = isUserLoggedIn();
+
+  // When the user is already logged in, step 3 (Account Creation) is
+  // irrelevant. Clamp the step so we never render the account form.
+  useEffect(() => {
+    if (loggedIn && step === 3) {
+      setStep(4);
+    }
+  }, [loggedIn, step, setStep]);
 
   const handleStepChange = useCallback(
     (newStep: CheckoutStep) => {
@@ -45,7 +55,7 @@ function CheckoutFlow() {
         <div className="transition-opacity duration-200">
           {step === 1 && <CouncilSelection />}
           {step === 2 && <TemplateSelection />}
-          {step === 3 && <AccountCreation />}
+          {step === 3 && !loggedIn && <AccountCreation />}
           {step === 4 && <Confirmation />}
         </div>
       </main>
