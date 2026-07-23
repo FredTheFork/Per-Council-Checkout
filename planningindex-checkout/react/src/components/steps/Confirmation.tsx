@@ -3,7 +3,6 @@ import { ArrowLeft, ArrowRight, Building, Mail, Phone, MapPin, Loader as Loader2
 import { useCheckout } from '@/context/CheckoutContext';
 import { getTemplateById } from '@/data/templates';
 import { api, isLoggedIn as isUserLoggedIn } from '@/lib/api';
-import { submitCheckoutForm } from '@/lib/checkoutForm';
 import { PriceSummary } from '@/components/PriceSummary';
 
 export function Confirmation() {
@@ -65,10 +64,8 @@ export function Confirmation() {
       return;
     }
 
-    // Attempt to save session server-side as a backup. This is best-effort —
-    // the primary transport is the hidden form POST in submitCheckoutForm,
-    // which populates $_POST directly so PMPro's hooks always see the data.
     try {
+      // Save session data server-side as backup
       if (isUserLoggedIn()) {
         await api.updateProfile(businessInfo).catch(() => {});
       }
@@ -82,30 +79,28 @@ export function Confirmation() {
           pmpc_company_address: businessInfo.businessAddress,
         },
       }).catch(() => {});
-    } catch {
-      // Session save failed — not fatal, the form POST carries the data
-    }
 
-    // Submit the hidden form POST — this navigates the browser to PMPro's
-    // checkout page with all per-council data in $_POST. PMPro's hooks
-    // (restore_session, checkout_level_price, Stripe filters) read from
-    // $_REQUEST and will set the correct price before Stripe checkout.
-    submitCheckoutForm({
-      councils: selectedCouncils,
-      calculatedPrice: monthlyCost.toFixed(2),
-      templateId: selectedTemplateId || 'standard-planning',
-      businessInfo,
-      accountInfo,
-      isLoggedIn: isUserLoggedIn(),
-    });
+      // Create a Stripe Checkout Session — this returns a Stripe-hosted URL
+      // so the user goes straight to checkout.stripe.com, bypassing PMPro's
+      // checkout page entirely.
+      const result = await api.createStripeSession({
+        councils: selectedCouncils,
+        templateId: selectedTemplateId || 'standard-planning',
+        businessInfo,
+        accountInfo,
+      });
 
-    // The browser navigates away after form.submit(). If we're still here
-    // after a brief moment, the form submission didn't trigger navigation
-    // (e.g. dev mode with no checkoutUrl) — show an error.
-    setTimeout(() => {
+      if (!result.success || !result.stripeUrl) {
+        throw new Error(result.message || 'Unable to start Stripe checkout.');
+      }
+
+      // Redirect to Stripe Checkout
+      window.location.href = result.stripeUrl;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'An error occurred during checkout.';
+      setError(message);
       setLoading(false);
-      setError('Unable to redirect to the checkout page. Please refresh and try again, or contact support.');
-    }, 3000);
+    }
   };
 
   return (

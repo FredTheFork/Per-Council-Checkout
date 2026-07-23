@@ -55,6 +55,9 @@ class PIC_PmproHooks
 
         // Hide account creation fields for logged-in users
         add_filter('pmpro_checkout_skip_account_fields', [self::class, 'skip_account_fields_for_logged_in'], 10, 1);
+
+        // Handle Stripe Checkout Session success redirect
+        add_action('template_redirect', [self::class, 'handle_stripe_success'], 5);
     }
 
     // ── Settings precedence ──────────────────────────────────────────
@@ -668,5 +671,153 @@ class PIC_PmproHooks
         }
 
         return $skip;
+    }
+
+    /**
+     * Handle the Stripe Checkout Session success redirect.
+     *
+     * When Stripe redirects back to /membership-account/?pic_stripe_success=1
+     * &session_id=..., we retrieve the session from Stripe, verify payment,
+     * create the WP user (if not logged in), save user meta, and grant the
+     * PMPro membership level.
+     */
+    public static function handle_stripe_success()
+    {
+        if (!isset($_GET['pic_stripe_success']) || !isset($_GET['session_id'])) {
+            return;
+        }
+
+        $session_id = sanitize_text_field($_GET['session_id']);
+        if (empty($session_id)) {
+            return;
+        }
+
+        $secret_key = '';
+        if (function_exists('pmpro_getOption')) {
+            $secret_key = pmpro_getOption('stripe_secretkey');
+        }
+        if (empty($secret_key)) {
+            $secret_key = get_option('pmpro_stripe_secretkey', '');
+        }
+        if (empty($secret_key)) {
+            return;
+        }
+
+        $response = wp_remote_get('https://api.stripe.com/v1/checkout/sessions/' . $session_id, [
+            'headers' => ['Authorization' => 'Bearer ' . $secret_key],
+            'timeout' => 30,
+        ]);
+
+        if (is_wp_error($response)) {
+            return;
+        }
+
+        $session = json_decode(wp_remote_retrieve_body($response), true);
+        if (empty($session) || $session['payment_status'] !== 'paid') {
+            return;
+        }
+
+        $ref_key = $session['client_reference_id'] ?? '';
+        $meta = $ref_key ? get_transient($ref_key) : false;
+        if (!$meta || !is_array($meta)) {
+            return;
+        }
+
+        $level_id   = intval($meta['level_id']);
+        $councils   = $meta['councils'];
+        $template   = $meta['template'];
+        $business   = $meta['business'];
+        $account    = $meta['account'];
+        $price      = $meta['price'];
+
+        // Create or retrieve WP user
+        $user_id = 0;
+        if (!empty($meta['user_id']) && $meta['user_id'] > 0) {
+            $user_id = intval($meta['user_id']);
+        } else {
+            $email = $account['email'] ?? ($session['customer_details']['email'] ?? '');
+            $username = $account['username'] ?? '';
+
+            if (empty($email)) {
+                return;
+            }
+
+            $existing = get_user_by('email', $email);
+            if ($existing) {
+                $user_id = $existing->ID;
+            } else {
+                if (empty($username)) {
+                    $username = sanitize_user(current(explode('@', $email)));
+                }
+                if (username_exists($username)) {
+                    $username .= wp_rand(100, 999);
+                }
+
+                $user_id = wp_create_user($username, $account['password'] ?? wp_generate_password(), $email);
+                if (is_wp_error($user_id)) {
+                    return;
+                }
+            }
+        }
+
+        if ($user_id > 0) {
+            // Save user meta
+            update_user_meta($user_id, '_pi_selected_councils', $councils);
+            update_user_meta($user_id, '_pi_selected_template', $template);
+            update_user_meta($user_id, '_pi_monthly_cost', $price);
+
+            if (!empty($business)) {
+                $business_info = [
+                    'company_name'    => $business['pmpc_company_name'] ?? '',
+                    'business_email'  => $business['pmpc_business_email'] ?? '',
+                    'business_phone'  => $business['pmpc_business_phone'] ?? '',
+                    'company_address' => $business['pmpc_company_address'] ?? '',
+                ];
+                update_user_meta($user_id, '_pi_business_info', $business_info);
+            }
+
+            // Grant PMPro membership level
+            if (function_exists('pmpro_changeMembershipLevel')) {
+                pmpro_changeMembershipLevel($level_id, $user_id);
+
+                // Create a PMPro order record
+                if (class_exists('MemberOrder')) {
+                    $order = new MemberOrder();
+                    $order->user_id = $user_id;
+                    $order->membership_id = $level_id;
+                    $order->InitialPayment = $price;
+                    $order->PaymentAmount = $price;
+                    $order->BillingPeriod = 'Month';
+                    $order->BillingFrequency = 1;
+                    $order->gateway = 'stripe';
+                    $order->status = 'success';
+                    $order->saveOrder();
+
+                    if (!empty($session['customer'])) {
+                        update_user_meta($user_id, 'pmpro_stripe_customer_id', $session['customer']);
+                    }
+                    if (!empty($session['subscription'])) {
+                        $order->subscription_transaction_id = $session['subscription'];
+                        $order->updateOrder();
+                    }
+                }
+
+                do_action('pmpro_after_checkout', $user_id);
+            }
+
+            // Log in the user if they weren't already
+            if (!is_user_logged_in()) {
+                wp_set_current_user($user_id);
+                wp_set_auth_cookie($user_id, true);
+            }
+        }
+
+        // Clean up transient
+        delete_transient($ref_key);
+
+        // Clear checkout session
+        if (session_id() && isset($_SESSION[PIC_SESSION_KEY])) {
+            unset($_SESSION[PIC_SESSION_KEY]);
+        }
     }
 }

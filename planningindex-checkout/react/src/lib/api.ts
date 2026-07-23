@@ -189,6 +189,13 @@ interface CheckoutResponse {
   redirectUrl?: string;
 }
 
+interface StripeSessionResponse {
+  success: boolean;
+  message?: string;
+  stripeUrl?: string;
+  sessionId?: string;
+}
+
 interface ConfigResponse {
   unitPrice: number;
   minSelection: number;
@@ -347,6 +354,27 @@ export const api = {
       };
     }
     return request<CheckoutResponse>('/checkout', { method: 'POST' });
+  },
+
+  /**
+   * POST /stripe-session — create a Stripe Checkout Session and get the
+   * Stripe-hosted URL. The React app redirects the browser there so the
+   * user goes straight to checkout.stripe.com, bypassing PMPro's checkout
+   * page entirely.
+   */
+  async createStripeSession(payload: {
+    councils: string[];
+    templateId: string;
+    businessInfo: BusinessInfo;
+    accountInfo: AccountInfo | null;
+  }): Promise<StripeSessionResponse> {
+    if (isDevMode()) {
+      return { success: true, stripeUrl: '', sessionId: 'dev' };
+    }
+    return request<StripeSessionResponse>('/stripe-session', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   },
 
   /** GET /checkout/verify-price — server-sourced price confirmation. */

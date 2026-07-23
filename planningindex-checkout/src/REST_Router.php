@@ -89,6 +89,13 @@ class PIC_REST_Router
             'permission_callback' => '__return_true',
         ]);
 
+        // Stripe Checkout Session creation (direct redirect to Stripe)
+        register_rest_route($namespace, '/stripe-session', [
+            'methods' => 'POST',
+            'callback' => [PIC_StripeSession_Controller::class, 'create_session'],
+            'permission_callback' => '__return_true',
+        ]);
+
         // Configuration
         register_rest_route($namespace, '/config', [
             'methods' => 'GET',
