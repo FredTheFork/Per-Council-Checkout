@@ -38,11 +38,11 @@ export function submitCheckoutForm(data: CheckoutFormData): void {
   const levelId = config.levelId;
   const gateway = config.gateway || 'stripe';
 
-  const baseUrl = config.checkoutUrl || '';
-  if (!baseUrl) {
-    // In dev mode there's nowhere to redirect to — just return.
-    return;
-  }
+  // Use the injected checkoutUrl if available. Fall back to the current
+  // page URL — the React wizard runs ON the PMPro checkout page, so
+  // posting back to the same URL with the per-council data in $_POST
+  // is sufficient to trigger PMPro's hooks and render the Stripe form.
+  const baseUrl = config.checkoutUrl || window.location.href;
 
   const checkoutUrl = appendQueryArgs(baseUrl, {
     level: String(levelId),

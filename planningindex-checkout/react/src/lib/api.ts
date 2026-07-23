@@ -56,6 +56,13 @@ const DEV_CONFIG: PicConfig = {
 function getConfig(): PicConfig {
   const cfg = (window as unknown as { PlanningIndexCheckout?: PicConfig }).PlanningIndexCheckout;
   if (!cfg || !cfg.apiBase || !cfg.nonce) {
+    // Even in dev mode, try to extract the level ID from the URL so the
+    // hidden form POST targets the right membership level.
+    const params = new URLSearchParams(window.location.search);
+    const urlLevel = parseInt(params.get('level') || '0', 10);
+    if (urlLevel > 0) {
+      return { ...DEV_CONFIG, levelId: urlLevel };
+    }
     return DEV_CONFIG;
   }
   return cfg;
