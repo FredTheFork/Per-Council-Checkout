@@ -113,6 +113,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
             username: '',
             email: '',
             fullName: '',
+            password: '',
           });
         }
       } catch {

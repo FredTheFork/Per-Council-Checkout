@@ -105,4 +105,31 @@ class PIC_Checkout_Controller
 
         return add_query_arg($args, $base);
     }
+
+    /**
+     * GET /checkout/verify-price
+     *
+     * Returns the current session's calculated price and council count
+     * so the React app can display a server-sourced price confirmation
+     * on the review step before submitting.
+     */
+    public static function verify_price(WP_REST_Request $request)
+    {
+        if (!session_id()) {
+            session_start();
+        }
+
+        $data = isset($_SESSION[PIC_SESSION_KEY]) ? (array) $_SESSION[PIC_SESSION_KEY] : [];
+        $councils = isset($data['councils']) && is_array($data['councils']) ? $data['councils'] : [];
+        $count = count($councils);
+        $price = isset($data['price']) ? floatval($data['price']) : ($count * PIC_UNIT_PRICE);
+
+        return new WP_REST_Response([
+            'success'      => true,
+            'councilCount' => $count,
+            'monthlyCost'  => $price,
+            'totalDueToday'=> $price,
+            'unitPrice'    => PIC_UNIT_PRICE,
+        ], 200);
+    }
 }

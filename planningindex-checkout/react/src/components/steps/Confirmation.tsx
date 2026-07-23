@@ -16,6 +16,7 @@ import {
 import { useCheckout } from '@/context/CheckoutContext';
 import { getTemplateById } from '@/data/templates';
 import { api, isLoggedIn as isUserLoggedIn, getLoggedInUserEmail } from '@/lib/api';
+import { submitCheckoutForm } from '@/lib/checkoutForm';
 import { PriceSummary } from '@/components/PriceSummary';
 
 export function Confirmation() {
@@ -65,10 +66,12 @@ export function Confirmation() {
     setLoading(true);
 
     try {
+      // 1. Save profile if logged in
       if (isUserLoggedIn()) {
         await api.updateProfile(businessInfo);
       }
 
+      // 2. Save session data server-side (steps 1 and 2)
       await api.saveSession(1, { councils: selectedCouncils });
       await api.saveSession(2, {
         template: selectedTemplateId || 'standard-planning',
@@ -80,14 +83,23 @@ export function Confirmation() {
         },
       });
 
-      const result = await api.submitCheckout();
-
-      if (result.redirectUrl) {
-        window.location.href = result.redirectUrl;
-        return;
+      // 3. Verify price server-side before submitting
+      const verification = await api.verifyPrice();
+      if (!verification.success || verification.councilCount === 0) {
+        throw new Error('Could not verify your selection. Please go back and select your councils.');
       }
 
-      setSuccess(true);
+      // 4. Submit the hidden form — triggers full-page navigation to PMPro checkout
+      submitCheckoutForm({
+        councils: selectedCouncils,
+        calculatedPrice: monthlyCost.toFixed(2),
+        templateId: selectedTemplateId || 'standard-planning',
+        businessInfo,
+        accountInfo,
+        isLoggedIn: isUserLoggedIn(),
+      });
+
+      // The browser navigates away — no need to set success state
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to complete subscription';
       setError(message);

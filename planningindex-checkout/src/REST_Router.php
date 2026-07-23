@@ -75,6 +75,13 @@ class PIC_REST_Router
             'permission_callback' => '__return_true',
         ]);
 
+        // Price verification (before final submit)
+        register_rest_route($namespace, '/checkout/verify-price', [
+            'methods' => 'GET',
+            'callback' => [PIC_Checkout_Controller::class, 'verify_price'],
+            'permission_callback' => '__return_true',
+        ]);
+
         // Checkout processing
         register_rest_route($namespace, '/checkout', [
             'methods' => 'POST',

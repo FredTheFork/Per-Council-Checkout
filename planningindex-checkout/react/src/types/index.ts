@@ -27,6 +27,7 @@ export interface AccountInfo {
   username: string;
   email: string;
   fullName: string;
+  password?: string;
 }
 
 export interface CheckoutState {

@@ -18,6 +18,7 @@ interface PicConfig {
   apiBase: string;
   nonce: string;
   checkoutUrl: string;
+  checkoutNonce: string;
   ajaxUrl: string;
   isLoggedIn: boolean;
   userId: number;
@@ -36,6 +37,7 @@ const DEV_CONFIG: PicConfig = {
   apiBase: '',
   nonce: 'dev',
   checkoutUrl: '',
+  checkoutNonce: 'dev',
   ajaxUrl: '',
   isLoggedIn: false,
   userId: 0,
@@ -192,6 +194,14 @@ interface ConfigResponse {
   isLoggedIn: boolean;
 }
 
+interface VerifyPriceResponse {
+  success: boolean;
+  councilCount: number;
+  monthlyCost: number;
+  totalDueToday: number;
+  unitPrice: number;
+}
+
 // --- API surface ---
 
 export const api = {
@@ -330,6 +340,20 @@ export const api = {
       };
     }
     return request<CheckoutResponse>('/checkout', { method: 'POST' });
+  },
+
+  /** GET /checkout/verify-price — server-sourced price confirmation. */
+  async verifyPrice(): Promise<VerifyPriceResponse> {
+    if (isDevMode()) {
+      return {
+        success: true,
+        councilCount: 0,
+        monthlyCost: 0,
+        totalDueToday: 0,
+        unitPrice: PRICE_PER_COUNCIL,
+      };
+    }
+    return request<VerifyPriceResponse>('/checkout/verify-price');
   },
 
   /** GET /config — runtime configuration. */

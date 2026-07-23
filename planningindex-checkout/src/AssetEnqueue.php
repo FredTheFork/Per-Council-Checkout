@@ -130,6 +130,7 @@ class PIC_AssetEnqueue
             'apiBase' => esc_url_raw(rest_url(PIC_REST_NAMESPACE)),
             'nonce' => wp_create_nonce('wp_rest'),
             'checkoutUrl' => function_exists('pmpro_url') ? pmpro_url('checkout') : '',
+            'checkoutNonce' => function_exists('wp_create_nonce') ? wp_create_nonce('pmpro_checkout_nonce') : '',
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'isLoggedIn' => is_user_logged_in(),
             'userId' => get_current_user_id(),

@@ -42,6 +42,12 @@ class PIC_PmproHooks
 
         // Restore session data into $_REQUEST on the PMPro checkout page load
         add_action('pmpro_checkout_preheader', [self::class, 'restore_session'], 5);
+
+        // Inject hidden custom fields (councils, price, template) into PMPro's checkout form
+        add_action('pmpro_checkout_after_billing_fields', [self::class, 'inject_hidden_fields'], 10);
+
+        // Pre-populate billing fields from session data
+        add_filter('pmpro_checkout_order', [self::class, 'prepopulate_billing'], 10, 1);
     }
 
     // ── Settings precedence ──────────────────────────────────────────
@@ -78,6 +84,15 @@ class PIC_PmproHooks
 
         if (!empty($_REQUEST['pmpc_calculated_price'])) {
             return floatval(sanitize_text_field(wp_unslash($_REQUEST['pmpc_calculated_price'])));
+        }
+
+        // Defensive fallback: check the session directly so the Stripe
+        // filters never see zero when the request param is missing.
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        if (!empty($_SESSION[PIC_SESSION_KEY]['price'])) {
+            return floatval($_SESSION[PIC_SESSION_KEY]['price']);
         }
 
         return 0.0;
@@ -367,6 +382,106 @@ class PIC_PmproHooks
             $intent_array['amount'] = intval($price * 100);
         }
         return $intent_array;
+    }
+
+    // ── Hidden custom field injection ─────────────────────────────────
+
+    /**
+     * Inject hidden inputs for councils, price, and template into PMPro's
+     * checkout form so they survive the POST and are available to
+     * after_checkout and the Stripe filters.
+     */
+    public static function inject_hidden_fields(): void
+    {
+        if (!self::is_per_council_checkout()) {
+            return;
+        }
+
+        if (!session_id()) {
+            session_start();
+        }
+
+        $data = isset($_SESSION[PIC_SESSION_KEY]) ? (array) $_SESSION[PIC_SESSION_KEY] : [];
+
+        $councils = isset($data['councils']) && is_array($data['councils']) ? $data['councils'] : [];
+        $price = isset($data['price']) ? $data['price'] : '';
+        $template = isset($data['template']) ? $data['template'] : 'standard-planning';
+
+        // Also check $_REQUEST for values (from the form POST)
+        if (empty($councils) && !empty($_REQUEST['pmpc_councils'])) {
+            $councils = (array) $_REQUEST['pmpc_councils'];
+        }
+        if (empty($price) && !empty($_REQUEST['pmpc_calculated_price'])) {
+            $price = sanitize_text_field(wp_unslash($_REQUEST['pmpc_calculated_price']));
+        }
+        if (empty($template) && !empty($_REQUEST['pmpc_default_template'])) {
+            $template = sanitize_text_field($_REQUEST['pmpc_default_template']);
+        }
+
+        echo '<!-- Per-council hidden fields -->';
+        foreach ($councils as $council) {
+            printf(
+                '<input type="hidden" name="pmpc_councils[]" value="%s" />',
+                esc_attr(sanitize_text_field($council))
+            );
+        }
+        printf(
+            '<input type="hidden" name="pmpc_calculated_price" value="%s" />',
+            esc_attr($price)
+        );
+        printf(
+            '<input type="hidden" name="pmpc_default_template" value="%s" />',
+            esc_attr($template)
+        );
+    }
+
+    // ── Billing field pre-population ─────────────────────────────────
+
+    /**
+     * Pre-populate the PMPro order's billing fields from the session so
+     * the user does not have to re-enter business address, phone, etc.
+     */
+    public static function prepopulate_billing($morder)
+    {
+        if (!self::is_per_council_checkout()) {
+            return $morder;
+        }
+
+        if (!session_id()) {
+            session_start();
+        }
+
+        $data = isset($_SESSION[PIC_SESSION_KEY]) ? (array) $_SESSION[PIC_SESSION_KEY] : [];
+        $business = isset($data['business']) && is_array($data['business']) ? $data['business'] : [];
+
+        // Also check $_REQUEST (from the form POST)
+        if (empty($business)) {
+            $business_fields = ['pmpc_company_name', 'pmpc_business_email', 'pmpc_business_phone', 'pmpc_company_address'];
+            foreach ($business_fields as $f) {
+                if (!empty($_REQUEST[$f])) {
+                    $business[$f] = sanitize_text_field(wp_unslash($_REQUEST[$f]));
+                }
+            }
+        }
+
+        if (!empty($business['pmpc_business_phone'])) {
+            $morder->billing->phone = $business['pmpc_business_phone'];
+        }
+        if (!empty($business['pmpc_company_address'])) {
+            $morder->billing->address1 = $business['pmpc_company_address'];
+        }
+        if (!empty($business['pmpc_business_email'])) {
+            $morder->Email = $business['pmpc_business_email'];
+            $morder->billing->email = $business['pmpc_business_email'];
+        }
+
+        // Pre-populate account email from session for new users
+        if (!is_user_logged_in() && isset($data['email'])) {
+            $morder->Email = $data['email'];
+            $morder->billing->email = $data['email'];
+        }
+
+        return $morder;
     }
 
     // ── Session restore on PMPro checkout page ───────────────────────

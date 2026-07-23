@@ -85,7 +85,7 @@ export function AccountCreation() {
 
       await api.saveSession(3, { username, password, email });
 
-      setAccountInfo({ username, email, fullName });
+      setAccountInfo({ username, email, fullName, password });
       setStep(4);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred during sign up';
