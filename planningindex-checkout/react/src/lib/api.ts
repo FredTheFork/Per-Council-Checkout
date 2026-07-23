@@ -1,12 +1,17 @@
 /**
  * API client for the Planning Index checkout.
  *
- * Replaces the Supabase client. All calls go through the WordPress REST API
- * at planningindex/v1, using the nonce injected by the plugin as
+ * In production (WordPress), all calls go through the WP REST API at
+ * planningindex/v1, using the nonce injected by the plugin as
  * window.PlanningIndexCheckout.nonce.
+ *
+ * In the local dev/preview environment (no WordPress), the client falls
+ * back to the hardcoded data so the UI is fully interactive.
  */
 
 import type { Council, PdfTemplate, BusinessInfo, AccountInfo } from '@/types';
+import { councils as fallbackCouncils, nations as fallbackNations, regions as fallbackRegions, PRICE_PER_COUNCIL } from '@/data/councils';
+import { templates as fallbackTemplates } from '@/data/templates';
 
 /** Shape of the injected config object. */
 interface PicConfig {
@@ -27,13 +32,37 @@ interface PicConfig {
   strings: Record<string, string>;
 }
 
-/** Read the config injected by the PHP plugin. */
+const DEV_CONFIG: PicConfig = {
+  apiBase: '',
+  nonce: 'dev',
+  checkoutUrl: '',
+  ajaxUrl: '',
+  isLoggedIn: false,
+  userId: 0,
+  userName: '',
+  userEmail: '',
+  userCurrentTemplate: 'standard-planning',
+  unitPrice: PRICE_PER_COUNCIL,
+  minSelection: 3,
+  levelId: 0,
+  gateway: 'stripe',
+  requireBilling: true,
+  strings: {},
+};
+
+/** Read the config injected by the PHP plugin, or fall back to dev config. */
 function getConfig(): PicConfig {
   const cfg = (window as unknown as { PlanningIndexCheckout?: PicConfig }).PlanningIndexCheckout;
   if (!cfg || !cfg.apiBase || !cfg.nonce) {
-    throw new Error('Planning Index checkout config not found. Ensure the plugin is active.');
+    return DEV_CONFIG;
   }
   return cfg;
+}
+
+/** Check whether we're in dev/preview mode (no WordPress backend). */
+function isDevMode(): boolean {
+  const cfg = getConfig();
+  return cfg.apiBase === '';
 }
 
 /** Wrapper around fetch that adds the WP REST nonce and JSON headers. */
@@ -124,6 +153,33 @@ interface ProfileResponse {
   totalDueToday: number;
 }
 
+interface LoginResponse {
+  success: boolean;
+  message?: string;
+  id?: string;
+  username?: string;
+  fullName?: string;
+  email?: string;
+  companyName?: string;
+  businessEmail?: string;
+  businessPhone?: string;
+  businessAddress?: string;
+  selectedCouncils?: string[];
+  selectedTemplateId?: string | null;
+}
+
+interface CheckoutResponse {
+  success: boolean;
+  message?: string;
+  orderCode?: string;
+  orderDate?: string;
+  planName?: string;
+  councilCount?: number;
+  monthlyCost?: number;
+  totalDueToday?: number;
+  redirectUrl?: string;
+}
+
 interface ConfigResponse {
   unitPrice: number;
   minSelection: number;
@@ -141,16 +197,35 @@ interface ConfigResponse {
 export const api = {
   /** GET /councils — full council list with nation/region grouping. */
   async getCouncils(): Promise<CouncilsResponse> {
+    if (isDevMode()) {
+      return {
+        councils: fallbackCouncils,
+        nations: [...fallbackNations],
+        regions: fallbackRegions,
+      };
+    }
     return request<CouncilsResponse>('/councils');
   },
 
   /** GET /templates — available templates plus user's saved template. */
   async getTemplates(): Promise<TemplatesResponse> {
+    if (isDevMode()) {
+      return {
+        templates: fallbackTemplates,
+        userCurrentTemplate: null,
+      };
+    }
     return request<TemplatesResponse>('/templates');
   },
 
   /** POST /check-user — validate username/email availability. */
   async checkUser(username: string, email: string): Promise<CheckUserResponse> {
+    if (isDevMode()) {
+      const errors: { username?: string; email?: string } = {};
+      if (username === 'taken') errors.username = 'This username is already taken.';
+      if (email === 'taken@example.com') errors.email = 'This email is already registered.';
+      return { valid: Object.keys(errors).length === 0, errors };
+    }
     return request<CheckUserResponse>('/check-user', {
       method: 'POST',
       body: { username, email },
@@ -159,6 +234,9 @@ export const api = {
 
   /** GET /session — retrieve saved checkout session data. */
   async getSession(): Promise<SessionResponse> {
+    if (isDevMode()) {
+      return { data: {} };
+    }
     return request<SessionResponse>('/session');
   },
 
@@ -174,21 +252,33 @@ export const api = {
       email?: string;
     }
   ): Promise<{ success: boolean; step: number }> {
+    if (isDevMode()) {
+      return { success: true, step: step + 1 };
+    }
     return request('/session', { method: 'POST', body: { step, ...payload } });
   },
 
   /** DELETE /session — clear session after successful checkout. */
   async clearSession(): Promise<{ success: boolean }> {
+    if (isDevMode()) {
+      return { success: true };
+    }
     return request('/session', { method: 'DELETE' });
   },
 
   /** GET /profile — logged-in user's profile data. */
   async getProfile(): Promise<ProfileResponse> {
+    if (isDevMode()) {
+      throw new Error('Not available in dev mode');
+    }
     return request<ProfileResponse>('/profile');
   },
 
   /** POST /profile — update business info on the user's profile. */
   async updateProfile(info: BusinessInfo): Promise<{ success: boolean }> {
+    if (isDevMode()) {
+      return { success: true };
+    }
     return request('/profile', {
       method: 'POST',
       body: {
@@ -200,8 +290,63 @@ export const api = {
     });
   },
 
+  /** POST /login — authenticate against WordPress and return profile. */
+  async login(identifier: string, password: string): Promise<LoginResponse> {
+    if (isDevMode()) {
+      if (identifier === 'demo' && password === 'password') {
+        return {
+          success: true,
+          id: '1',
+          username: 'demo',
+          fullName: 'Demo User',
+          email: 'demo@example.com',
+          companyName: '',
+          businessEmail: 'demo@example.com',
+          businessPhone: '',
+          businessAddress: '',
+          selectedCouncils: [],
+          selectedTemplateId: null,
+        };
+      }
+      return { success: false, message: 'Invalid login details. Use demo/password for dev mode.' };
+    }
+    return request<LoginResponse>('/login', {
+      method: 'POST',
+      body: { login: identifier, password },
+    });
+  },
+
+  /** POST /checkout — process the subscription checkout. */
+  async submitCheckout(): Promise<CheckoutResponse> {
+    if (isDevMode()) {
+      return {
+        success: true,
+        orderCode: 'PIC-DEV' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+        orderDate: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+        planName: 'Planning Index Subscription',
+        councilCount: 0,
+        monthlyCost: 0,
+        totalDueToday: 0,
+      };
+    }
+    return request<CheckoutResponse>('/checkout', { method: 'POST' });
+  },
+
   /** GET /config — runtime configuration. */
   async getConfig(): Promise<ConfigResponse> {
+    if (isDevMode()) {
+      return {
+        unitPrice: PRICE_PER_COUNCIL,
+        minSelection: 3,
+        totalSteps: 4,
+        checkoutUrl: '',
+        ajaxUrl: '',
+        gateway: 'stripe',
+        levelId: 0,
+        requireBilling: true,
+        isLoggedIn: false,
+      };
+    }
     return request<ConfigResponse>('/config');
   },
 };
@@ -213,29 +358,17 @@ export function getInjectedConfig(): PicConfig {
 
 /** Convenience: check if the user is logged in from the injected config. */
 export function isLoggedIn(): boolean {
-  try {
-    return getConfig().isLoggedIn;
-  } catch {
-    return false;
-  }
+  return getConfig().isLoggedIn;
 }
 
 /** Convenience: get the logged-in user's display name from the injected config. */
 export function getLoggedInUserName(): string {
-  try {
-    return getConfig().userName;
-  } catch {
-    return '';
-  }
+  return getConfig().userName;
 }
 
 /** Convenience: get the logged-in user's email from the injected config. */
 export function getLoggedInUserEmail(): string {
-  try {
-    return getConfig().userEmail;
-  } catch {
-    return '';
-  }
+  return getConfig().userEmail;
 }
 
 /** Type re-export for consumers. */

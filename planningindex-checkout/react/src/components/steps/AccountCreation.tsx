@@ -100,14 +100,12 @@ export function AccountCreation() {
     setLoading(true);
 
     try {
-      if (!isUserLoggedIn()) {
-        throw new Error('Please log in to WordPress first, then return to checkout.');
-      }
+      const result = await api.login(loginIdentifier, loginPassword);
 
       setAccountInfo({
-        username: getLoggedInUserName(),
-        email: getLoggedInUserEmail(),
-        fullName: getLoggedInUserName(),
+        username: result.username || loginIdentifier,
+        email: result.email || '',
+        fullName: result.fullName || '',
       });
       setStep(4);
     } catch (err) {

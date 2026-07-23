@@ -1,7 +1,21 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import type { CheckoutStep, BusinessInfo, AccountInfo } from '@/types';
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+  type ReactNode,
+} from 'react';
+import type {
+  CheckoutStep,
+  BusinessInfo,
+  AccountInfo,
+  Council,
+  PdfTemplate,
+} from '@/types';
 import { PRICE_PER_COUNCIL } from '@/data/councils';
-import { getTemplateById } from '@/data/templates';
+import { getTemplateById as getTemplateByIdStatic, templates as fallbackTemplates } from '@/data/templates';
+import { api, isLoggedIn as isUserLoggedIn } from '@/lib/api';
 
 interface CheckoutContextValue {
   step: CheckoutStep;
@@ -11,6 +25,12 @@ interface CheckoutContextValue {
   accountInfo: AccountInfo | null;
   monthlyCost: number;
   totalDueToday: number;
+  // Async-loaded data
+  councils: Council[];
+  nations: readonly string[];
+  templates: PdfTemplate[];
+  loading: boolean;
+  // Actions
   setStep: (step: CheckoutStep) => void;
   toggleCouncil: (name: string) => void;
   clearCouncils: () => void;
@@ -27,6 +47,8 @@ const defaultBusinessInfo: BusinessInfo = {
   businessAddress: '',
 };
 
+const defaultNations = ['England', 'Scotland', 'Wales', 'Northern Ireland'] as const;
+
 const CheckoutContext = createContext<CheckoutContextValue | null>(null);
 
 export function CheckoutProvider({ children }: { children: ReactNode }) {
@@ -35,6 +57,78 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo>(defaultBusinessInfo);
   const [accountInfo, setAccountInfo] = useState<AccountInfo | null>(null);
+
+  const [councils, setCouncils] = useState<Council[]>([]);
+  const [nations, setNations] = useState<readonly string[]>(defaultNations);
+  const [templates, setTemplates] = useState<PdfTemplate[]>(fallbackTemplates);
+  const [loading, setLoading] = useState(true);
+
+  // Initial load: fetch councils, templates, and restore session
+  useEffect(() => {
+    let mounted = true;
+
+    async function init() {
+      try {
+        const [councilsRes, templatesRes] = await Promise.all([
+          api.getCouncils(),
+          api.getTemplates(),
+        ]);
+
+        if (!mounted) return;
+
+        setCouncils(councilsRes.councils);
+        if (councilsRes.nations.length > 0) {
+          setNations(councilsRes.nations);
+        }
+        setTemplates(templatesRes.templates);
+
+        // Pre-select user's current template if available
+        if (templatesRes.userCurrentTemplate) {
+          setSelectedTemplateId(templatesRes.userCurrentTemplate);
+        }
+
+        // Restore session if in progress
+        const session = await api.getSession();
+        if (!mounted) return;
+
+        const data = session.data;
+        if (data.councils && data.councils.length > 0) {
+          setSelectedCouncils(data.councils);
+        }
+        if (data.template) {
+          setSelectedTemplateId(data.template);
+        }
+        if (data.business) {
+          setBusinessInfo({
+            companyName: data.business.pmpc_company_name || '',
+            businessEmail: data.business.pmpc_business_email || '',
+            businessPhone: data.business.pmpc_business_phone || '',
+            businessAddress: data.business.pmpc_company_address || '',
+          });
+        }
+
+        // If user is already logged in via WordPress, pre-fill account info
+        if (isUserLoggedIn()) {
+          setAccountInfo({
+            username: '',
+            email: '',
+            fullName: '',
+          });
+        }
+      } catch {
+        // In dev mode or if the API is unavailable, the fallback data
+        // from the static imports is already set as default state.
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    init();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const toggleCouncil = useCallback((name: string) => {
     setSelectedCouncils((prev) =>
@@ -66,6 +160,10 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     accountInfo,
     monthlyCost,
     totalDueToday,
+    councils,
+    nations,
+    templates,
+    loading,
     setStep,
     toggleCouncil,
     clearCouncils,
@@ -75,7 +173,9 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     canProceedFromStep,
   };
 
-  return <CheckoutContext.Provider value={value}>{children}</CheckoutContext.Provider>;
+  return (
+    <CheckoutContext.Provider value={value}>{children}</CheckoutContext.Provider>
+  );
 }
 
 export function useCheckout() {
@@ -84,4 +184,4 @@ export function useCheckout() {
   return ctx;
 }
 
-export { getTemplateById };
+export { getTemplateByIdStatic as getTemplateById };

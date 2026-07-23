@@ -50,7 +50,6 @@ export function Confirmation() {
           // Profile fetch failed — leave defaults
         });
       } else if (accountInfo.email) {
-        // For guest users, pre-fill business email from account info
         setBusinessInfo({
           ...businessInfo,
           businessEmail: accountInfo.email || '',
@@ -66,15 +65,13 @@ export function Confirmation() {
     setLoading(true);
 
     try {
-      // Save business info to the user's profile (if logged in)
       if (isUserLoggedIn()) {
         await api.updateProfile(businessInfo);
       }
 
-      // Save session data so PMPro can pick it up during checkout processing
       await api.saveSession(1, { councils: selectedCouncils });
       await api.saveSession(2, {
-        template: selectedTemplateId || 'professional',
+        template: selectedTemplateId || 'standard-planning',
         business: {
           pmpc_company_name: businessInfo.companyName,
           pmpc_business_email: businessInfo.businessEmail,
@@ -82,6 +79,13 @@ export function Confirmation() {
           pmpc_company_address: businessInfo.businessAddress,
         },
       });
+
+      const result = await api.submitCheckout();
+
+      if (result.redirectUrl) {
+        window.location.href = result.redirectUrl;
+        return;
+      }
 
       setSuccess(true);
     } catch (err) {
