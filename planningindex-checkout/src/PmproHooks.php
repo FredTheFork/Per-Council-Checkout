@@ -521,36 +521,42 @@ class PIC_PmproHooks
             return;
         }
 
-        // Merge session data into $_REQUEST for all hooks to see
-        $_REQUEST = array_merge($_REQUEST, $data);
+        // Map session keys to the PMPro request keys that all hooks
+        // (registration_checks, checkout_level_price, inject_hidden_fields,
+        // Stripe filters) read from. Do this on every request so the price
+        // override and hidden fields are present when the browser lands on
+        // the PMPro checkout page via GET redirect from the React wizard.
+        if (isset($data['councils'])) {
+            $_REQUEST['pmpc_councils'] = $data['councils'];
+        }
+        if (isset($data['price'])) {
+            $_REQUEST['pmpc_calculated_price'] = $data['price'];
+        }
+        if (isset($data['template'])) {
+            $_REQUEST['pmpc_default_template'] = $data['template'];
+        }
+        if (!empty($data['business'])) {
+            foreach ($data['business'] as $k => $v) {
+                $_REQUEST[$k] = $v;
+            }
+        }
 
-        // If this is the final POST (submit-checkout), populate PMPro-specific fields and clear session
+        // For logged-out users, pre-populate account credentials so PMPro
+        // can create the account during checkout processing.
+        if (!is_user_logged_in() && isset($data['username'])) {
+            $_REQUEST['username']      = $data['username'];
+            $_REQUEST['password']      = $data['password'];
+            $_REQUEST['password2']     = $data['password'];
+            $_REQUEST['bemail']         = $data['email'];
+            $_REQUEST['bconfirmemail']  = $data['email'];
+        }
+
+        // Clear the session only on the final PMPro form POST so the data
+        // persists across the GET redirect → page render → form submit cycle.
         if (
             $_SERVER['REQUEST_METHOD'] === 'POST'
             && (isset($_POST['submit-checkout']) || isset($_POST['pmpro_submit']) || isset($_POST['javascriptok']))
         ) {
-            if (isset($data['councils'])) {
-                $_REQUEST['pmpc_councils'] = $data['councils'];
-            }
-            if (isset($data['price'])) {
-                $_REQUEST['pmpc_calculated_price'] = $data['price'];
-            }
-            if (isset($data['template'])) {
-                $_REQUEST['pmpc_default_template'] = $data['template'];
-            }
-            if (!empty($data['business'])) {
-                foreach ($data['business'] as $k => $v) {
-                    $_REQUEST[$k] = $v;
-                }
-            }
-            if (!is_user_logged_in() && isset($data['username'])) {
-                $_REQUEST['username']      = $data['username'];
-                $_REQUEST['password']      = $data['password'];
-                $_REQUEST['password2']     = $data['password'];
-                $_REQUEST['bemail']         = $data['email'];
-                $_REQUEST['bconfirmemail']  = $data['email'];
-            }
-
             unset($_SESSION[PIC_SESSION_KEY]);
         }
     }

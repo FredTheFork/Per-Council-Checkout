@@ -1,11 +1,17 @@
 /**
- * Hidden form builder for the hybrid PMPro checkout POST.
+ * Redirect helper for the hybrid PMPro checkout flow.
  *
- * Instead of sending card data through the REST API, the React app builds
- * a traditional hidden <form> and submits it as a full-page navigation
- * to the PMPro checkout URL. PMPro's native Stripe gateway then collects
- * card data on its own checkout page, preserving PCI compliance and
- * firing all existing Stripe hooks.
+ * The React wizard collects all selections (councils, template, business
+ * info, account credentials) and persists them server-side via the REST
+ * session endpoint. On the final step we redirect the browser to the
+ * real PMPro checkout page via a normal GET navigation.
+ *
+ * PMPro then renders its own checkout form with a fresh nonce and its
+ * own Stripe gateway, which avoids "Nonce security check failed"
+ * errors. The PmproHooks::restore_session() method fires on
+ * pmpro_checkout_preheader and merges the saved session data into
+ * $_REQUEST so the price override, hidden fields, and billing
+ * pre-population all work.
  */
 
 import type { AccountInfo, BusinessInfo } from '@/types';
@@ -21,18 +27,19 @@ export interface CheckoutFormData {
 }
 
 /**
- * Build and submit a hidden form to the PMPro checkout page.
+ * Redirect the browser to the PMPro checkout page.
  *
- * The form includes all session data as hidden inputs plus the PMPro
- * checkout nonce, then triggers a full-page navigation.
+ * All wizard data is already saved in the PHP session via the REST
+ * /session endpoint, so we only need to navigate to the checkout URL
+ * with the level and pi_complete flag. PMPro renders its own form,
+ * the session is restored by PmproHooks, and the user submits PMPro's
+ * native form to reach Stripe.
  */
-export function submitCheckoutForm(data: CheckoutFormData): void {
+export function submitCheckoutForm(_data: CheckoutFormData): void {
   const config = getInjectedConfig();
   const levelId = config.levelId;
   const gateway = config.gateway || 'stripe';
-  const nonce = config.checkoutNonce || '';
 
-  // Build the PMPro checkout URL with query params
   const baseUrl = config.checkoutUrl || '';
   const checkoutUrl = appendQueryArgs(baseUrl, {
     level: String(levelId),
@@ -40,57 +47,11 @@ export function submitCheckoutForm(data: CheckoutFormData): void {
     gateway,
   });
 
-  const form = document.createElement('form');
-  form.method = 'POST';
-  form.action = checkoutUrl;
-  form.style.display = 'none';
-
-  // PMPro control fields
-  addHiddenInput(form, 'pmpro_level', String(levelId));
-  addHiddenInput(form, 'level', String(levelId));
-  addHiddenInput(form, 'submit-checkout', '1');
-  addHiddenInput(form, 'confirm', '1');
-  addHiddenInput(form, 'checkjavascript', '1');
-  addHiddenInput(form, 'gateway', gateway);
-
-  if (nonce) {
-    addHiddenInput(form, 'pmpro_checkout_nonce', nonce);
+  if (checkoutUrl) {
+    window.location.href = checkoutUrl;
   }
-
-  // Council selection (one input per council)
-  data.councils.forEach((council) => {
-    addHiddenInput(form, 'pmpc_councils[]', council);
-  });
-
-  // Calculated price
-  addHiddenInput(form, 'pmpc_calculated_price', data.calculatedPrice);
-
-  // Template
-  addHiddenInput(form, 'pmpc_default_template', data.templateId || 'standard-planning');
-
-  // Business info
-  addHiddenInput(form, 'pmpc_company_name', data.businessInfo.companyName || '');
-  addHiddenInput(form, 'pmpc_business_email', data.businessInfo.businessEmail || '');
-  addHiddenInput(form, 'pmpc_business_phone', data.businessInfo.businessPhone || '');
-  addHiddenInput(form, 'pmpc_company_address', data.businessInfo.businessAddress || '');
-
-  // Account credentials — only for new (not-logged-in) users
-  if (!data.isLoggedIn && data.accountInfo) {
-    addHiddenInput(form, 'username', data.accountInfo.username || '');
-    addHiddenInput(form, 'password', data.accountInfo.password || '');
-    addHiddenInput(form, 'password2', data.accountInfo.password || '');
-    addHiddenInput(form, 'bemail', data.accountInfo.email || '');
-    addHiddenInput(form, 'bconfirmemail', data.accountInfo.email || '');
-  }
-
-  // Append to DOM and submit
-  document.body.appendChild(form);
-  form.submit();
 }
 
-/**
- * Append query parameters to a base URL.
- */
 function appendQueryArgs(baseUrl: string, args: Record<string, string>): string {
   if (!baseUrl) return '';
   const url = new URL(baseUrl, window.location.origin);
@@ -98,15 +59,4 @@ function appendQueryArgs(baseUrl: string, args: Record<string, string>): string 
     url.searchParams.set(key, value);
   });
   return url.toString();
-}
-
-/**
- * Add a hidden input to a form.
- */
-function addHiddenInput(form: HTMLFormElement, name: string, value: string): void {
-  const input = document.createElement('input');
-  input.type = 'hidden';
-  input.name = name;
-  input.value = value;
-  form.appendChild(input);
 }
