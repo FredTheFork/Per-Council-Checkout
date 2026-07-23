@@ -43,11 +43,18 @@ class PIC_PmproHooks
         // Restore session data into $_REQUEST on the PMPro checkout page load
         add_action('pmpro_checkout_preheader', [self::class, 'restore_session'], 5);
 
+        // Load our custom checkout template on the pi_complete page so the
+        // user sees our styled multi-step form instead of PMPro's default.
+        add_action('pmpro_checkout_preheader', [self::class, 'load_custom_template'], 10);
+
         // Inject hidden custom fields (councils, price, template) into PMPro's checkout form
         add_action('pmpro_checkout_after_billing_fields', [self::class, 'inject_hidden_fields'], 10);
 
         // Pre-populate billing fields from session data
         add_filter('pmpro_checkout_order', [self::class, 'prepopulate_billing'], 10, 1);
+
+        // Hide account creation fields for logged-in users
+        add_filter('pmpro_checkout_skip_account_fields', [self::class, 'skip_account_fields_for_logged_in'], 10, 1);
     }
 
     // ── Settings precedence ──────────────────────────────────────────
@@ -111,10 +118,10 @@ class PIC_PmproHooks
 
         $current_level = 0;
 
-        if (isset($_REQUEST['level'])) {
-            $current_level = intval($_REQUEST['level']);
-        } elseif (isset($_REQUEST['pmpro_level'])) {
+        if (isset($_REQUEST['pmpro_level'])) {
             $current_level = intval($_REQUEST['pmpro_level']);
+        } elseif (isset($_REQUEST['level'])) {
+            $current_level = intval($_REQUEST['level']);
         } elseif (isset($_GET['pmpro_level'])) {
             $current_level = intval($_GET['pmpro_level']);
         } elseif (isset($GLOBALS['pmpro_level']->id)) {
@@ -603,5 +610,63 @@ class PIC_PmproHooks
         ) {
             unset($_SESSION[PIC_SESSION_KEY]);
         }
+    }
+
+    /**
+     * Load our custom checkout template when the React wizard redirects
+     * to the PMPro checkout page with pi_complete=1. This replaces PMPro's
+     * default checkout template with our styled multi-step form so the
+     * user sees a consistent, branded experience instead of PMPro's
+     * plain account-creation form.
+     */
+    public static function load_custom_template(): void
+    {
+        if (!self::is_per_council_checkout()) {
+            return;
+        }
+
+        if (empty($_REQUEST['pi_complete'])) {
+            return;
+        }
+
+        // Don't intercept the actual form submission — let PMPro process it
+        if (
+            $_SERVER['REQUEST_METHOD'] === 'POST'
+            && (isset($_POST['submit-checkout']) || isset($_POST['pmpro_submit']) || isset($_POST['javascriptok']))
+        ) {
+            return;
+        }
+
+        $template_path = get_stylesheet_directory() . '/pages/checkout.php';
+        if (!file_exists($template_path)) {
+            // Fallback to the plugin's own pages directory
+            $template_path = PIC_PLUGIN_DIR . 'pages/checkout.php';
+        }
+
+        if (!file_exists($template_path)) {
+            return;
+        }
+
+        // Render the template and exit — replaces PMPro's default checkout page
+        require $template_path;
+        exit;
+    }
+
+    /**
+     * For logged-in users, tell PMPro to skip the account creation fields
+     * entirely. The user already has an account; they should never see
+     * username/password/email fields during checkout.
+     */
+    public static function skip_account_fields_for_logged_in($skip): bool
+    {
+        if (!self::is_per_council_checkout()) {
+            return $skip;
+        }
+
+        if (is_user_logged_in()) {
+            return true;
+        }
+
+        return $skip;
     }
 }

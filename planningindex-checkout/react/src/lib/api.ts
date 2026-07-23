@@ -59,7 +59,7 @@ function getConfig(): PicConfig {
     // Even in dev mode, try to extract the level ID from the URL so the
     // hidden form POST targets the right membership level.
     const params = new URLSearchParams(window.location.search);
-    const urlLevel = parseInt(params.get('level') || '0', 10);
+    const urlLevel = parseInt(params.get('level') || params.get('pmpro_level') || '0', 10);
     if (urlLevel > 0) {
       return { ...DEV_CONFIG, levelId: urlLevel };
     }

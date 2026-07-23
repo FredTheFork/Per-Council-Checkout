@@ -78,10 +78,10 @@ class PIC_AssetEnqueue
         }
 
         $current_level = 0;
-        if (isset($_REQUEST['level'])) {
-            $current_level = intval($_REQUEST['level']);
-        } elseif (isset($_REQUEST['pmpro_level'])) {
+        if (isset($_REQUEST['pmpro_level'])) {
             $current_level = intval($_REQUEST['pmpro_level']);
+        } elseif (isset($_REQUEST['level'])) {
+            $current_level = intval($_REQUEST['level']);
         }
 
         return $current_level === $configured_level;

@@ -46,6 +46,7 @@ export function submitCheckoutForm(data: CheckoutFormData): void {
 
   const checkoutUrl = appendQueryArgs(baseUrl, {
     level: String(levelId),
+    pmpro_level: String(levelId),
     pi_complete: '1',
     gateway,
   });

@@ -28,7 +28,7 @@ if (!session_id()) {
     @session_start();
 }
 
-$data = isset($_SESSION[PMPC_SESSION_KEY]) ? (array) $_SESSION[PMPC_SESSION_KEY] : [];
+$data = isset($_SESSION[PIC_SESSION_KEY]) ? (array) $_SESSION[PIC_SESSION_KEY] : [];
 
 $selected_councils = !empty($data['councils']) ? (array) $data['councils'] : [];
 if (empty($selected_councils) && is_user_logged_in()) {
@@ -40,7 +40,7 @@ if (empty($selected_councils) && is_user_logged_in()) {
 
 if (empty($pmpro_level) || !is_object($pmpro_level) || empty($pmpro_level->id)) {
     $level_id = isset($_REQUEST['pmpro_level']) ? intval($_REQUEST['pmpro_level'])
-              : (isset($_REQUEST['level']) ? intval($_REQUEST['level']) : 0);
+              : (isset($_REQUEST['level']) ? intval($_REQUEST['level']) : intval(get_option(PIC_OPTION_LEVEL_ID, 0)));
 
     if ($level_id > 0 && function_exists('pmpro_getLevel')) {
         $pmpro_level = pmpro_getLevel($level_id);
@@ -48,8 +48,8 @@ if (empty($pmpro_level) || !is_object($pmpro_level) || empty($pmpro_level->id)) 
 
     if (empty($pmpro_level) || !is_object($pmpro_level)) {
         $pmpro_level = new stdClass();
-        $pmpro_level->id = 0;
-        $pmpro_level->name = __('Invalid Membership Level', 'paid-memberships-pro');
+        $pmpro_level->id = $level_id;
+        $pmpro_level->name = __('Per Council', 'paid-memberships-pro');
     }
 }
 
@@ -74,7 +74,7 @@ $steps = [
 $checkout_url = pmpro_url('checkout');
 $councils = function_exists('pmpc_get_all_councils') ? pmpc_get_all_councils() : [];
 $council_count = count($selected_councils);
-$calculated_price = $council_count * PMPC_UNIT_PRICE;
+$calculated_price = $council_count * PIC_UNIT_PRICE;
 $total_display_steps = is_user_logged_in() ? 3 : 4;
 
 // Enqueue unified assets (also injected directly below to fix post-wp_head timing)
@@ -182,7 +182,7 @@ $_pi_path_base = function_exists('pi_checkout_core_asset_path')
                             Step 1 of <?= $total_display_steps ?>
                         </div>
                         <h2>Select Your Councils</h2>
-                        <p>Choose the councils where you want to find planning applications. Each council is just &pound;<?= PMPC_UNIT_PRICE ?>/month — select at least <?= PMPC_MIN_SELECTION ?> to continue.</p>
+                        <p>Choose the councils where you want to find planning applications. Each council is just &pound;<?= PIC_UNIT_PRICE ?>/month — select at least <?= PIC_MIN_SELECTION ?> to continue.</p>
                     </div>
 
                     <div class="pmpc-step-card-body pi-step-card-body">
@@ -201,7 +201,7 @@ $_pi_path_base = function_exists('pi_checkout_core_asset_path')
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                                 </div>
                                 <div class="pmpc-benefit-text pi-benefit-content">
-                                    <strong>Only &pound;<?= PMPC_UNIT_PRICE ?>/council</strong>
+                                    <strong>Only &pound;<?= PIC_UNIT_PRICE ?>/council</strong>
                                     <span>Pay only for the areas you actually work in</span>
                                 </div>
                             </div>
@@ -211,7 +211,7 @@ $_pi_path_base = function_exists('pi_checkout_core_asset_path')
                                 </div>
                                 <div class="pmpc-benefit-text pi-benefit-content">
                                     <strong>Flexible Choice</strong>
-                                    <span>Select any <?= PMPC_MIN_SELECTION ?>+ councils across the UK</span>
+                                    <span>Select any <?= PIC_MIN_SELECTION ?>+ councils across the UK</span>
                                 </div>
                             </div>
                         </div>
@@ -224,8 +224,8 @@ $_pi_path_base = function_exists('pi_checkout_core_asset_path')
 
                         <div class="pmpc-selection-header">
                             <span class="pmpc-selection-label">Available Councils</span>
-                            <span class="pmpc-selection-counter <?= $council_count >= PMPC_MIN_SELECTION ? 'valid' : '' ?>" aria-live="polite">
-                                <strong id="pi_selected_count"><?= $council_count ?></strong> of <?= PMPC_MIN_SELECTION ?>+ selected
+                            <span class="pmpc-selection-counter <?= $council_count >= PIC_MIN_SELECTION ? 'valid' : '' ?>" aria-live="polite">
+                                <strong id="pi_selected_count"><?= $council_count ?></strong> of <?= PIC_MIN_SELECTION ?>+ selected
                             </span>
                         </div>
 
@@ -280,7 +280,7 @@ $_pi_path_base = function_exists('pi_checkout_core_asset_path')
                         <div class="pmpc-price-display pi-price-display" aria-live="polite">
                             <div class="pmpc-price-info pi-price-info">
                                 <span class="pmpc-price-label pi-price-label">Monthly Total</span>
-                                <span class="pmpc-price-breakdown" id="pmpc_price_breakdown"><?= $council_count ?> council<?= $council_count !== 1 ? 's' : '' ?> &times; &pound;<?= PMPC_UNIT_PRICE ?></span>
+                                <span class="pmpc-price-breakdown" id="pmpc_price_breakdown"><?= $council_count ?> council<?= $council_count !== 1 ? 's' : '' ?> &times; &pound;<?= PIC_UNIT_PRICE ?></span>
                                 <span class="pmpc-price-amount pi-price-amount" id="pi_price_amount">&pound;<?= number_format($calculated_price, 2) ?></span>
                                 <span class="pmpc-price-period pi-price-period">per month</span>
                             </div>
@@ -724,15 +724,15 @@ window.piCheckoutConfig = {
     nonce: '<?= wp_create_nonce('pi_checkout_nonce') ?>',
     restNonce: '<?= wp_create_nonce('wp_rest') ?>',
     isLoggedIn: <?= is_user_logged_in() ? 'true' : 'false' ?>,
-    price: <?= floatval(PMPC_UNIT_PRICE) ?>,
-    minSelection: <?= intval(PMPC_MIN_SELECTION) ?>,
+    price: <?= floatval(PIC_UNIT_PRICE) ?>,
+    minSelection: <?= intval(PIC_MIN_SELECTION) ?>,
     maxSelection: 0,
     selectedCouncils: <?= json_encode(array_values($selected_councils)) ?>,
     templates: {},
     strings: {
         completeSubscription: 'Complete Subscription',
         perMonth: '/month',
-        selectMinCouncils: '<?= esc_js(sprintf('Please select at least %d councils to continue.', PMPC_MIN_SELECTION)) ?>'
+        selectMinCouncils: '<?= esc_js(sprintf('Please select at least %d councils to continue.', PIC_MIN_SELECTION)) ?>'
     }
 };
 </script>
