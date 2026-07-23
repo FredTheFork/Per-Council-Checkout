@@ -115,14 +115,13 @@ class PIC_Checkout_Controller
      */
     public static function verify_price(WP_REST_Request $request)
     {
-        if (!session_id()) {
-            session_start();
+        $councils = $request->get_param('councils');
+        if (!is_array($councils)) {
+            $councils = [];
         }
-
-        $data = isset($_SESSION[PIC_SESSION_KEY]) ? (array) $_SESSION[PIC_SESSION_KEY] : [];
-        $councils = isset($data['councils']) && is_array($data['councils']) ? $data['councils'] : [];
+        $councils = array_map('sanitize_text_field', $councils);
         $count = count($councils);
-        $price = isset($data['price']) ? floatval($data['price']) : ($count * PIC_UNIT_PRICE);
+        $price = $count * PIC_UNIT_PRICE;
 
         return new WP_REST_Response([
             'success'      => true,

@@ -342,18 +342,21 @@ export const api = {
     return request<CheckoutResponse>('/checkout', { method: 'POST' });
   },
 
-  /** GET /checkout/verify-price — server-sourced price confirmation. */
-  async verifyPrice(): Promise<VerifyPriceResponse> {
+  /** POST /checkout/verify-price — server-sourced price confirmation. */
+  async verifyPrice(councils: string[]): Promise<VerifyPriceResponse> {
     if (isDevMode()) {
       return {
         success: true,
-        councilCount: 0,
-        monthlyCost: 0,
-        totalDueToday: 0,
+        councilCount: councils.length,
+        monthlyCost: councils.length * PRICE_PER_COUNCIL,
+        totalDueToday: councils.length * PRICE_PER_COUNCIL,
         unitPrice: PRICE_PER_COUNCIL,
       };
     }
-    return request<VerifyPriceResponse>('/checkout/verify-price');
+    return request<VerifyPriceResponse>('/checkout/verify-price', {
+      method: 'POST',
+      body: { councils },
+    });
   },
 
   /** GET /config — runtime configuration. */

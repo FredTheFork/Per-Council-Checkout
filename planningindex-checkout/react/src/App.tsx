@@ -9,7 +9,7 @@ import { Confirmation } from '@/components/steps/Confirmation';
 import type { CheckoutStep } from '@/types';
 
 function CheckoutFlow() {
-  const { step, setStep, canProceedFromStep } = useCheckout();
+  const { step, setStep, canProceedFromStep, userLoggedIn } = useCheckout();
   const [maxReachedStep, setMaxReachedStep] = useState<CheckoutStep>(1);
 
   const handleStepChange = useCallback(
@@ -39,13 +39,14 @@ function CheckoutFlow() {
             currentStep={step}
             onStepClick={handleStepClick}
             maxReachedStep={maxReachedStep}
+            hideAccount={userLoggedIn}
           />
         </div>
 
         <div className="transition-opacity duration-200">
           {step === 1 && <CouncilSelection />}
           {step === 2 && <TemplateSelection />}
-          {step === 3 && <AccountCreation />}
+          {step === 3 && !userLoggedIn && <AccountCreation />}
           {step === 4 && <Confirmation />}
         </div>
       </main>
