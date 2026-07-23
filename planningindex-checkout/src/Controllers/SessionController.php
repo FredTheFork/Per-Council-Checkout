@@ -87,9 +87,11 @@ class PIC_Session_Controller
                     'pmpc_vat_number',
                 ];
                 $body = $request->get_json_params() ?: [];
+                // The React app sends business info nested inside a 'business' object
+                $business_input = isset($body['business']) && is_array($body['business']) ? $body['business'] : $body;
                 foreach ($fields as $f) {
-                    if (isset($body[$f])) {
-                        $business[$f] = sanitize_text_field($body[$f]);
+                    if (isset($business_input[$f])) {
+                        $business[$f] = sanitize_text_field($business_input[$f]);
                     }
                 }
                 $data['business'] = $business;

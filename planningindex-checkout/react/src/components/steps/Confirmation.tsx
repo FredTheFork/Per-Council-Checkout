@@ -51,14 +51,28 @@ export function Confirmation() {
     setError(null);
     setLoading(true);
 
-    try {
-      // 1. Save profile if logged in
-      if (isUserLoggedIn()) {
-        await api.updateProfile(businessInfo);
-      }
+    // Guard: must have councils selected
+    if (selectedCouncils.length < 3) {
+      setError('Please go back and select at least 3 councils before completing your subscription.');
+      setLoading(false);
+      return;
+    }
 
-      // 2. Save session data server-side (steps 1 and 2)
-      await api.saveSession(1, { councils: selectedCouncils });
+    // Guard: must have account info (for logged-out users)
+    if (!isUserLoggedIn() && !accountInfo?.email) {
+      setError('Please go back and complete your account information before subscribing.');
+      setLoading(false);
+      return;
+    }
+
+    // Attempt to save session server-side as a backup. This is best-effort —
+    // the primary transport is the hidden form POST in submitCheckoutForm,
+    // which populates $_POST directly so PMPro's hooks always see the data.
+    try {
+      if (isUserLoggedIn()) {
+        await api.updateProfile(businessInfo).catch(() => {});
+      }
+      await api.saveSession(1, { councils: selectedCouncils }).catch(() => {});
       await api.saveSession(2, {
         template: selectedTemplateId || 'standard-planning',
         business: {
@@ -67,32 +81,31 @@ export function Confirmation() {
           pmpc_business_phone: businessInfo.businessPhone,
           pmpc_company_address: businessInfo.businessAddress,
         },
-      });
-
-      // 3. Verify price server-side before submitting
-      const verification = await api.verifyPrice(selectedCouncils.length);
-      if (!verification.success || verification.councilCount === 0) {
-        throw new Error('Could not verify your selection. Please go back and select your councils.');
-      }
-
-      // 4. Submit the hidden form — triggers full-page navigation to PMPro checkout
-      submitCheckoutForm({
-        councils: selectedCouncils,
-        calculatedPrice: monthlyCost.toFixed(2),
-        templateId: selectedTemplateId || 'standard-planning',
-        businessInfo,
-        accountInfo,
-        isLoggedIn: isUserLoggedIn(),
-      });
-
-      // The browser navigates away — no need to set success state
-      // (if we reach here, the form submit triggered navigation)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to complete subscription';
-      setError(message);
-    } finally {
-      setLoading(false);
+      }).catch(() => {});
+    } catch {
+      // Session save failed — not fatal, the form POST carries the data
     }
+
+    // Submit the hidden form POST — this navigates the browser to PMPro's
+    // checkout page with all per-council data in $_POST. PMPro's hooks
+    // (restore_session, checkout_level_price, Stripe filters) read from
+    // $_REQUEST and will set the correct price before Stripe checkout.
+    submitCheckoutForm({
+      councils: selectedCouncils,
+      calculatedPrice: monthlyCost.toFixed(2),
+      templateId: selectedTemplateId || 'standard-planning',
+      businessInfo,
+      accountInfo,
+      isLoggedIn: isUserLoggedIn(),
+    });
+
+    // The browser navigates away after form.submit(). If we're still here
+    // after a brief moment, the form submission didn't trigger navigation
+    // (e.g. dev mode with no checkoutUrl) — show an error.
+    setTimeout(() => {
+      setLoading(false);
+      setError('Unable to redirect to the checkout page. Please refresh and try again, or contact support.');
+    }, 3000);
   };
 
   return (

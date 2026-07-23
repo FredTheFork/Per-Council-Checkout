@@ -517,6 +517,50 @@ class PIC_PmproHooks
         }
 
         $data = isset($_SESSION[PIC_SESSION_KEY]) ? (array) $_SESSION[PIC_SESSION_KEY] : [];
+
+        // If the session is empty, the data may have arrived via the hidden
+        // form POST from the React wizard. Merge POST data into the session
+        // so all downstream hooks (inject_hidden_fields, Stripe filters) see
+        // a consistent data source.
+        if (empty($data) && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $posted_councils = isset($_POST['pmpc_councils']) ? (array) $_POST['pmpc_councils'] : [];
+            $posted_price = isset($_POST['pmpc_calculated_price']) ? sanitize_text_field(wp_unslash($_POST['pmpc_calculated_price'])) : '';
+            $posted_template = isset($_POST['pmpc_default_template']) ? sanitize_text_field($_POST['pmpc_default_template']) : '';
+
+            if (!empty($posted_councils)) {
+                $data['councils'] = array_map('sanitize_text_field', $posted_councils);
+            }
+            if (!empty($posted_price)) {
+                $data['price'] = $posted_price;
+            }
+            if (!empty($posted_template)) {
+                $data['template'] = $posted_template;
+            }
+
+            // Business info from POST
+            $business = [];
+            $business_fields = ['pmpc_company_name', 'pmpc_business_email', 'pmpc_business_phone', 'pmpc_company_address'];
+            foreach ($business_fields as $f) {
+                if (!empty($_POST[$f])) {
+                    $business[$f] = sanitize_text_field(wp_unslash($_POST[$f]));
+                }
+            }
+            if (!empty($business)) {
+                $data['business'] = $business;
+            }
+
+            // Account credentials for logged-out users
+            if (!is_user_logged_in() && !empty($_POST['username'])) {
+                $data['username'] = sanitize_user($_POST['username']);
+                $data['password'] = $_POST['password'] ?? '';
+                $data['email'] = sanitize_email($_POST['bemail'] ?? '');
+            }
+
+            if (!empty($data)) {
+                $_SESSION[PIC_SESSION_KEY] = $data;
+            }
+        }
+
         if (empty($data)) {
             return;
         }
