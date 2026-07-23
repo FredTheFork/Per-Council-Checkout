@@ -70,7 +70,7 @@ export function Confirmation() {
       });
 
       // 3. Verify price server-side before submitting
-      const verification = await api.verifyPrice();
+      const verification = await api.verifyPrice(selectedCouncils.length);
       if (!verification.success || verification.councilCount === 0) {
         throw new Error('Could not verify your selection. Please go back and select your councils.');
       }

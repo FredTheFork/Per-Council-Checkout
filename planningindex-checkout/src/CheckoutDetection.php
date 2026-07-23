@@ -41,6 +41,13 @@ class PIC_CheckoutDetection
             return false;
         }
 
+        // If the page uses the [planningindex_checkout] shortcode, it is
+        // always a checkout page regardless of PMPro state or login status.
+        if (self::has_checkout_shortcode()) {
+            self::$cached_result = true;
+            return true;
+        }
+
         if (!function_exists('pmpro_is_checkout') || !pmpro_is_checkout()) {
             $request_uri = isset($_SERVER['REQUEST_URI']) ? parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) : '';
             if ($request_uri) {
@@ -64,7 +71,10 @@ class PIC_CheckoutDetection
 
         if (empty($_REQUEST['level']) && empty($_REQUEST['pmpro_level']) && empty($_GET['pmpro_level'])) {
             if (!isset($GLOBALS['pmpro_level']->id)) {
-                self::$cached_result = false;
+                // Do NOT cache false here. PMPro globals may not be
+                // initialized yet for logged-out users at template_redirect
+                // priority 5. A later call (e.g. wp_enqueue_scripts) may
+                // find the globals set and correctly detect the checkout.
                 return false;
             }
         }
@@ -82,12 +92,26 @@ class PIC_CheckoutDetection
         }
 
         if ($current_level === 0) {
-            self::$cached_result = false;
+            // Same as above: do not cache false when the level simply
+            // couldn't be resolved yet.
             return false;
         }
 
         self::$cached_result = ($current_level === $configured_level);
         return self::$cached_result;
+    }
+
+    /**
+     * Check whether the current post content contains the
+     * [planningindex_checkout] shortcode.
+         */
+    public static function has_checkout_shortcode(): bool
+    {
+        $post = get_post();
+        if (!$post || empty($post->post_content)) {
+            return false;
+        }
+        return strpos($post->post_content, 'planningindex_checkout') !== false;
     }
 
     public static function maybe_render_react_checkout(): void

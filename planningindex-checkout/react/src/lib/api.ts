@@ -343,13 +343,13 @@ export const api = {
   },
 
   /** GET /checkout/verify-price — server-sourced price confirmation. */
-  async verifyPrice(): Promise<VerifyPriceResponse> {
+  async verifyPrice(localCouncilCount: number = 0): Promise<VerifyPriceResponse> {
     if (isDevMode()) {
       return {
-        success: true,
-        councilCount: 0,
-        monthlyCost: 0,
-        totalDueToday: 0,
+        success: localCouncilCount > 0,
+        councilCount: localCouncilCount,
+        monthlyCost: localCouncilCount * PRICE_PER_COUNCIL,
+        totalDueToday: localCouncilCount * PRICE_PER_COUNCIL,
         unitPrice: PRICE_PER_COUNCIL,
       };
     }
