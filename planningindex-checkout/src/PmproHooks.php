@@ -322,6 +322,7 @@ class PIC_PmproHooks
                     'pmpc_business_phone'  => 'phone',
                     'pmpc_company_address' => 'company_address',
                     'pmpc_website'         => 'website',
+                    'pmpc_vat_number'      => 'vat_number',
                 ];
 
                 foreach ($field_map as $checkout_key => $settings_key) {

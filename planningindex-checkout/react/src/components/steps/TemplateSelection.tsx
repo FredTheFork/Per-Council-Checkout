@@ -6,7 +6,7 @@ const accentClasses: Record<string, { bg: string; text: string; ring: string; ba
   brand: { bg: 'bg-brand-50', text: 'text-brand-600', ring: 'ring-brand-500', badge: 'bg-brand-100 text-brand-700' },
   success: { bg: 'bg-success-50', text: 'text-success-600', ring: 'ring-success-500', badge: 'bg-success-100 text-success-700' },
   accent: { bg: 'bg-accent-50', text: 'text-accent-600', ring: 'ring-accent-500', badge: 'bg-accent-100 text-accent-700' },
-  warning: { bg: 'bg-warning-5', text: 'text-warning-600', ring: 'ring-warning-500', badge: 'bg-warning-100 text-warning-700' },
+  warning: { bg: 'bg-warning-50', text: 'text-warning-600', ring: 'ring-warning-500', badge: 'bg-warning-100 text-warning-700' },
 };
 
 export function TemplateSelection() {

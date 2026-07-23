@@ -1,18 +1,7 @@
 import { useState, useCallback, type ChangeEvent } from 'react';
-import {
-  ArrowRight,
-  ArrowLeft,
-  Eye,
-  EyeOff,
-  X,
-  Check,
-  Loader2,
-  User,
-  Lock,
-  Mail,
-} from 'lucide-react';
+import { ArrowRight, ArrowLeft, Eye, EyeOff, X, Check, Loader as Loader2, User, Lock, Mail } from 'lucide-react';
 import { useCheckout } from '@/context/CheckoutContext';
-import { api, isLoggedIn as isUserLoggedIn, getLoggedInUserName, getLoggedInUserEmail } from '@/lib/api';
+import { api, isLoggedIn as isUserLoggedIn } from '@/lib/api';
 import { PriceSummary } from '@/components/PriceSummary';
 
 type Mode = 'signup' | 'login';

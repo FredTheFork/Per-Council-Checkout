@@ -1,21 +1,8 @@
 import { useState, useEffect } from 'react';
-import {
-  ArrowLeft,
-  ArrowRight,
-  Building,
-  Mail,
-  Phone,
-  MapPin,
-  Check,
-  Loader2,
-  Lock,
-  User,
-  FileText,
-  MapPinned,
-} from 'lucide-react';
+import { ArrowLeft, ArrowRight, Building, Mail, Phone, MapPin, Loader as Loader2, Lock, User, FileText, MapPinned } from 'lucide-react';
 import { useCheckout } from '@/context/CheckoutContext';
 import { getTemplateById } from '@/data/templates';
-import { api, isLoggedIn as isUserLoggedIn, getLoggedInUserEmail } from '@/lib/api';
+import { api, isLoggedIn as isUserLoggedIn } from '@/lib/api';
 import { submitCheckoutForm } from '@/lib/checkoutForm';
 import { PriceSummary } from '@/components/PriceSummary';
 
@@ -33,7 +20,6 @@ export function Confirmation() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     if (accountInfo) {
@@ -100,6 +86,7 @@ export function Confirmation() {
       });
 
       // The browser navigates away — no need to set success state
+      // (if we reach here, the form submit triggered navigation)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to complete subscription';
       setError(message);
@@ -107,33 +94,6 @@ export function Confirmation() {
       setLoading(false);
     }
   };
-
-  if (success) {
-    return (
-      <div className="mx-auto max-w-lg text-center">
-        <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-success-100 mx-auto">
-          <Check className="h-10 w-10 text-success-600" />
-        </div>
-        <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-          Subscription Prepared
-        </h1>
-        <p className="mt-3 text-sm text-slate-500 sm:text-base">
-          Your subscription has been set up and is ready for payment. You'll be redirected to our
-          secure payment provider to complete your purchase.
-        </p>
-        <div className="card mt-6 p-5">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-500">Monthly Cost</span>
-            <span className="font-bold text-slate-900">£{monthlyCost.toFixed(2)}/month</span>
-          </div>
-          <div className="mt-2 flex items-center justify-between text-sm">
-            <span className="text-slate-500">Total Due Today</span>
-            <span className="font-bold text-brand-600">£{totalDueToday.toFixed(2)}</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_340px]">

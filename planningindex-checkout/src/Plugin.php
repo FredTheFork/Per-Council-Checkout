@@ -41,7 +41,7 @@ class PlanningIndexCheckout
     public static function activate(): void
     {
         if (!class_exists('PMPro_Subscription')) {
-            deactivate_plugins(plugin_basename(__FILE__));
+            deactivate_plugins(plugin_basename(PIC_PLUGIN_FILE));
             wp_die(
                 esc_html__('Planning Index Checkout requires Paid Memberships Pro to be installed and active.', 'planningindex-checkout'),
                 esc_html__('Plugin Activation Error', 'planningindex-checkout'),
