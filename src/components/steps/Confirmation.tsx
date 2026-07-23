@@ -119,9 +119,6 @@ export function Confirmation() {
             <span className="font-bold text-brand-600">£{totalDueToday.toFixed(2)}</span>
           </div>
         </div>
-        <p className="mt-4 text-xs text-slate-400">
-          Stripe payment integration will be connected in the next phase.
-        </p>
       </div>
     );
   }

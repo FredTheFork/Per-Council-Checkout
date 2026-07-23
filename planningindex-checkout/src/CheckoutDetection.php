@@ -25,6 +25,15 @@ class PIC_CheckoutDetection
             return self::$cached_result;
         }
 
+        // When pi_complete is set, the wizard has already finished and the
+        // user has been redirected to the PMPro checkout page for card
+        // collection. Let the standard PMPro checkout render so the ported
+        // hooks in PmproHooks.php can process the real checkout.
+        if (!empty($_REQUEST['pi_complete'])) {
+            self::$cached_result = false;
+            return false;
+        }
+
         $configured_level = intval(get_option(PIC_OPTION_LEVEL_ID, 0));
 
         if ($configured_level === 0) {
@@ -87,6 +96,11 @@ class PIC_CheckoutDetection
             return;
         }
 
+        // Never render the React wizard when the wizard is already complete.
+        if (!empty($_REQUEST['pi_complete'])) {
+            return;
+        }
+
         if (isset($_GET['confirm']) || isset($_GET['review'])) {
             return;
         }
@@ -126,6 +140,12 @@ class PIC_CheckoutDetection
     public static function filter_checkout_content($content): string
     {
         if (!self::is_per_council_checkout()) {
+            return $content;
+        }
+
+        // Do not replace content when the wizard is complete — PMPro's own
+        // checkout form must render so the ported hooks can fire.
+        if (!empty($_REQUEST['pi_complete'])) {
             return $content;
         }
 

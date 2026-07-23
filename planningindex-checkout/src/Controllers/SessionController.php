@@ -108,7 +108,7 @@ class PIC_Session_Controller
         // strip business and template so checkout data never overrides them.
         if (is_user_logged_in()) {
             $user_id = get_current_user_id();
-            if (function_exists('pmpc_should_use_settings') && pmpc_should_use_settings($user_id)) {
+            if (PIC_PmproHooks::should_use_settings($user_id)) {
                 unset($data['business'], $data['template']);
             }
         }

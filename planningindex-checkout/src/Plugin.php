@@ -35,6 +35,7 @@ class PlanningIndexCheckout
         PIC_Shortcode::init();
         PIC_REST_Router::init();
         PIC_Admin_SettingsPage::init();
+        PIC_PmproHooks::init();
     }
 
     public static function activate(): void

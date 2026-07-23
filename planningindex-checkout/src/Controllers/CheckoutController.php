@@ -7,16 +7,16 @@ if (!defined('ABSPATH')) {
 /**
  * POST /planningindex/v1/checkout
  *
- * Reads the saved session data (councils, template, business info,
- * account credentials) and persists it to the user's meta so PMPro's
- * checkout processing can pick it up. Returns an order reference that
- * the React app displays on the confirmation screen.
+ * Saves the final checkout session data (councils, price, template,
+ * business info, account credentials) so the PMPro hooks can pick
+ * them up when the browser is redirected to the real PMPro checkout
+ * page for card collection.
+ *
+ * Returns a redirectUrl that the React app navigates to via
+ * window.location.href.
  */
 class PIC_Checkout_Controller
 {
-    /**
-     * @return WP_REST_Response
-     */
     public static function checkout(WP_REST_Request $request)
     {
         if (!session_id()) {
@@ -46,45 +46,14 @@ class PIC_Checkout_Controller
 
         $price = count($councils) * PIC_UNIT_PRICE;
 
-        // Persist councils, price, template, and business info onto the user
-        // so PMPro's checkout processing and the confirmation page can read them.
-        if (is_user_logged_in()) {
-            $user_id = get_current_user_id();
-            update_user_meta($user_id, PIC_META_KEY, $councils);
-            update_user_meta($user_id, PIC_META_PRICE, $price);
-            update_user_meta($user_id, PIC_META_TEMPLATE, $template);
+        // Ensure price is stored in the session so the PMPro hooks see it
+        $data['price'] = number_format($price, 2, '.', '');
+        $_SESSION[PIC_SESSION_KEY] = $data;
 
-            if (!empty($business)) {
-                update_user_meta($user_id, PIC_META_BUSINESS, $business);
-            }
-        }
-
-        // Build an order reference for display. Use PMPro's MemberOrder if
-        // available; otherwise generate a standalone reference.
-        $order_code = '';
-        $order_date = date('j F Y');
-
-        if (class_exists('MemberOrder')) {
-            $order = new MemberOrder();
-            $order->user_id = get_current_user_id();
-            $order->membership_id = $level_id;
-            $order->subtotal = $price;
-            $order->total = $price;
-            $order->status = 'success';
-            $order->saveOrder();
-
-            if (!empty($order->code)) {
-                $order_code = $order->code;
-                $order_date = date('j F Y', strtotime($order->timestamp));
-            }
-        }
-
-        if (empty($order_code)) {
-            $order_code = 'PIC-' . strtoupper(wp_generate_password(8, false));
-        }
-
-        // Clear the session so a fresh checkout starts clean.
-        unset($_SESSION[PIC_SESSION_KEY]);
+        // Build the PMPro checkout URL — the browser will redirect here
+        // and the PmproHooks::restore_session() method will merge the
+        // session data into $_REQUEST before PMPro processes checkout.
+        $checkout_url = self::build_pmpro_checkout_url($level_id);
 
         $plan_name = 'Planning Index Subscription';
         if (function_exists('pmpro_getLevel') && $level_id > 0) {
@@ -95,13 +64,45 @@ class PIC_Checkout_Controller
         }
 
         return new WP_REST_Response([
-            'success' => true,
-            'orderCode' => $order_code,
-            'orderDate' => $order_date,
-            'planName' => $plan_name,
+            'success'      => true,
+            'orderCode'    => 'PIC-' . strtoupper(wp_generate_password(8, false)),
+            'orderDate'    => date('j F Y'),
+            'planName'      => $plan_name,
             'councilCount' => count($councils),
-            'monthlyCost' => $price,
-            'totalDueToday' => $price,
+            'monthlyCost'  => $price,
+            'totalDueToday'=> $price,
+            'redirectUrl'  => $checkout_url,
         ], 200);
+    }
+
+    /**
+     * Build the PMPro checkout URL for the configured per-council level.
+     *
+     * Adds the level parameter and a pi_complete flag so CheckoutDetection
+     * knows to let the real PMPro checkout page render (not the React app).
+     */
+    private static function build_pmpro_checkout_url(int $level_id): string
+    {
+        $base = '';
+        if (function_exists('pmpro_url')) {
+            $base = pmpro_url('checkout');
+        }
+
+        if (empty($base)) {
+            $base = home_url('/membership-checkout/');
+        }
+
+        $args = [
+            'level'       => $level_id,
+            'pi_complete' => '1',
+        ];
+
+        // Preserve the gateway if one is configured
+        $gateway = get_option('pmpro_gateway', '');
+        if (!empty($gateway)) {
+            $args['gateway'] = $gateway;
+        }
+
+        return add_query_arg($args, $base);
     }
 }
