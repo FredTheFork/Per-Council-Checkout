@@ -68,6 +68,20 @@ class PIC_REST_Router
             'permission_callback' => [PIC_Profile_Controller::class, 'require_login'],
         ]);
 
+        // Login
+        register_rest_route($namespace, '/login', [
+            'methods' => 'POST',
+            'callback' => [PIC_Login_Controller::class, 'login'],
+            'permission_callback' => '__return_true',
+        ]);
+
+        // Checkout processing
+        register_rest_route($namespace, '/checkout', [
+            'methods' => 'POST',
+            'callback' => [PIC_Checkout_Controller::class, 'checkout'],
+            'permission_callback' => '__return_true',
+        ]);
+
         // Configuration
         register_rest_route($namespace, '/config', [
             'methods' => 'GET',

@@ -41,50 +41,67 @@ class PIC_Templates_Controller
 
     /**
      * Builds the template list matching the React PdfTemplate interface.
+     * Template IDs mirror react/src/data/templates.ts exactly.
      *
      * @return array<int, array{id: string, name: string, description: string, category: string, included: bool, price: int, accent: string}>
      */
     private static function build_templates(): array
     {
-        $base = pmpc_get_templates();
-
-        $shaped = [];
-        foreach ($base as $id => $data) {
-            $shaped[] = [
-                'id' => $id,
-                'name' => $data['name'] ?? ucfirst($id),
-                'description' => $data['description'] ?? '',
-                'category' => self::category_for($id),
+        return [
+            [
+                'id' => 'standard-planning',
+                'name' => 'Standard Planning Proposal',
+                'description' => 'A clean, professional template for standard planning applications. Includes all essential sections for a complete submission.',
+                'category' => 'Planning Application',
                 'included' => true,
                 'price' => 0,
-                'accent' => self::accent_for($id),
-            ];
-        }
-
-        return $shaped;
-    }
-
-    private static function category_for(string $id): string
-    {
-        $categories = [
-            'professional' => 'Planning Application',
-            'modern' => 'Design Statement',
-            'classic' => 'Heritage',
-            'minimal' => 'Appeal',
+                'accent' => 'brand',
+            ],
+            [
+                'id' => 'detailed-design',
+                'name' => 'Detailed Design & Access',
+                'description' => 'Comprehensive design and access statement template with detailed sections covering design principles, access arrangements, and sustainability.',
+                'category' => 'Design Statement',
+                'included' => true,
+                'price' => 0,
+                'accent' => 'success',
+            ],
+            [
+                'id' => 'heritage-statement',
+                'name' => 'Heritage Impact Statement',
+                'description' => 'Specialised template for applications affecting listed buildings and conservation areas. Covers historical context and impact assessment.',
+                'category' => 'Heritage',
+                'included' => true,
+                'price' => 0,
+                'accent' => 'accent',
+            ],
+            [
+                'id' => 'planning-appeal',
+                'name' => 'Planning Appeal Document',
+                'description' => 'Structured template for planning appeals with clear argument sections, supporting evidence framework, and statement of grounds.',
+                'category' => 'Appeal',
+                'included' => true,
+                'price' => 0,
+                'accent' => 'warning',
+            ],
+            [
+                'id' => 'community-infra',
+                'name' => 'Community Infrastructure Levy',
+                'description' => 'Template for CIL-related submissions with calculation worksheets, liability assessment, and relief claim sections.',
+                'category' => 'Infrastructure',
+                'included' => true,
+                'price' => 0,
+                'accent' => 'brand',
+            ],
+            [
+                'id' => 'environmental-impact',
+                'name' => 'Environmental Impact Assessment',
+                'description' => 'Comprehensive EIA template covering screening, scoping, and full environmental statements with all required regulatory sections.',
+                'category' => 'Environmental',
+                'included' => true,
+                'price' => 0,
+                'accent' => 'success',
+            ],
         ];
-
-        return $categories[$id] ?? 'General';
-    }
-
-    private static function accent_for(string $id): string
-    {
-        $accents = [
-            'professional' => 'brand',
-            'modern' => 'success',
-            'classic' => 'accent',
-            'minimal' => 'warning',
-        ];
-
-        return $accents[$id] ?? 'brand';
     }
 }

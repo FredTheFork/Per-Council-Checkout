@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useCheckout } from '@/context/CheckoutContext';
 import { getTemplateById } from '@/data/templates';
-import { supabase } from '@/lib/supabase';
+import { api, isLoggedIn as isUserLoggedIn, getLoggedInUserEmail } from '@/lib/api';
 import { PriceSummary } from '@/components/PriceSummary';
 
 export function Confirmation() {
@@ -36,21 +36,25 @@ export function Confirmation() {
 
   useEffect(() => {
     if (accountInfo) {
-      supabase
-        .from('profiles')
-        .select('company_name, business_email, business_phone, business_address')
-        .eq('email', accountInfo.email)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) {
+      if (isUserLoggedIn()) {
+        api.getProfile().then((profile) => {
+          if (profile) {
             setBusinessInfo({
-              companyName: data.company_name || '',
-              businessEmail: data.business_email || '',
-              businessPhone: data.business_phone || '',
-              businessAddress: data.business_address || '',
+              companyName: profile.companyName || '',
+              businessEmail: profile.businessEmail || '',
+              businessPhone: profile.businessPhone || '',
+              businessAddress: profile.businessAddress || '',
             });
           }
+        }).catch(() => {
+          // Profile fetch failed — leave defaults
         });
+      } else if (accountInfo.email) {
+        setBusinessInfo({
+          ...businessInfo,
+          businessEmail: accountInfo.email || '',
+        });
+      }
     }
   }, [accountInfo, setBusinessInfo]);
 
@@ -61,29 +65,27 @@ export function Confirmation() {
     setLoading(true);
 
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error('Not authenticated');
+      if (isUserLoggedIn()) {
+        await api.updateProfile(businessInfo);
+      }
 
-      await supabase
-        .from('profiles')
-        .update({
-          company_name: businessInfo.companyName || null,
-          business_email: businessInfo.businessEmail || null,
-          business_phone: businessInfo.businessPhone || null,
-          business_address: businessInfo.businessAddress || null,
-        })
-        .eq('id', userData.user.id);
-
-      const { error: subError } = await supabase.from('subscriptions').insert({
-        user_id: userData.user.id,
-        selected_councils: selectedCouncils,
-        selected_template_id: selectedTemplateId,
-        monthly_cost: monthlyCost,
-        total_due_today: totalDueToday,
-        status: 'pending_payment',
+      await api.saveSession(1, { councils: selectedCouncils });
+      await api.saveSession(2, {
+        template: selectedTemplateId || 'standard-planning',
+        business: {
+          pmpc_company_name: businessInfo.companyName,
+          pmpc_business_email: businessInfo.businessEmail,
+          pmpc_business_phone: businessInfo.businessPhone,
+          pmpc_company_address: businessInfo.businessAddress,
+        },
       });
 
-      if (subError) throw subError;
+      const result = await api.submitCheckout();
+
+      if (result.redirectUrl) {
+        window.location.href = result.redirectUrl;
+        return;
+      }
 
       setSuccess(true);
     } catch (err) {

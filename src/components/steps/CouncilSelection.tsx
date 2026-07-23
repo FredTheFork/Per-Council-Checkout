@@ -1,13 +1,13 @@
 import { useState, useMemo } from 'react';
 import { Search, MapPin, X, Check, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useCheckout } from '@/context/CheckoutContext';
-import { councils, nations, PRICE_PER_COUNCIL } from '@/data/councils';
+import { PRICE_PER_COUNCIL } from '@/data/councils';
 import { PriceSummary } from '@/components/PriceSummary';
 
 const MIN_COUNCILS = 3;
 
 export function CouncilSelection() {
-  const { selectedCouncils, toggleCouncil, setStep, canProceedFromStep } = useCheckout();
+  const { selectedCouncils, toggleCouncil, setStep, canProceedFromStep, councils, nations, loading } = useCheckout();
   const [search, setSearch] = useState('');
   const [activeNation, setActiveNation] = useState<string>('all');
 
@@ -20,9 +20,17 @@ export function CouncilSelection() {
       const matchesNation = activeNation === 'all' || c.nation === activeNation;
       return matchesSearch && matchesNation;
     });
-  }, [search, activeNation]);
+  }, [search, activeNation, councils]);
 
   const hasEnough = selectedCouncils.length >= MIN_COUNCILS;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-brand-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_340px]">

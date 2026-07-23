@@ -12,7 +12,7 @@ import {
   Mail,
 } from 'lucide-react';
 import { useCheckout } from '@/context/CheckoutContext';
-import { supabase } from '@/lib/supabase';
+import { api, isLoggedIn as isUserLoggedIn, getLoggedInUserName, getLoggedInUserEmail } from '@/lib/api';
 import { PriceSummary } from '@/components/PriceSummary';
 
 type Mode = 'signup' | 'login';
@@ -77,23 +77,13 @@ export function AccountCreation() {
     setLoading(true);
 
     try {
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-
-      if (signUpError) throw signUpError;
-
-      if (data.user) {
-        const { error: profileError } = await supabase.from('profiles').insert({
-          id: data.user.id,
-          username,
-          full_name: fullName,
-          email,
-        });
-
-        if (profileError) throw profileError;
+      const result = await api.checkUser(username, email);
+      if (!result.valid) {
+        const msgs = Object.values(result.errors).filter(Boolean);
+        throw new Error(msgs.length > 0 ? msgs.join(' ') : 'Validation failed');
       }
+
+      await api.saveSession(3, { username, password, email });
 
       setAccountInfo({ username, email, fullName });
       setStep(4);
@@ -110,28 +100,14 @@ export function AccountCreation() {
     setLoading(true);
 
     try {
-      const isEmail = validateEmail(loginIdentifier);
-      const { data, error: loginError } = await supabase.auth.signInWithPassword({
-        email: isEmail ? loginIdentifier : `${loginIdentifier}@planningindex.local`,
-        password: loginPassword,
+      const result = await api.login(loginIdentifier, loginPassword);
+
+      setAccountInfo({
+        username: result.username || loginIdentifier,
+        email: result.email || '',
+        fullName: result.fullName || '',
       });
-
-      if (loginError) throw loginError;
-
-      if (data.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('username, email, full_name')
-          .eq('id', data.user.id)
-          .maybeSingle();
-
-        setAccountInfo({
-          username: profile?.username || loginIdentifier,
-          email: profile?.email || data.user.email || '',
-          fullName: profile?.full_name || '',
-        });
-        setStep(4);
-      }
+      setStep(4);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred during login';
       setError(message);
