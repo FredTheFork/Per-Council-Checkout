@@ -36,16 +36,23 @@ class PIC_CheckoutDetection
 
         $configured_level = intval(get_option(PIC_OPTION_LEVEL_ID, 0));
 
-        if ($configured_level === 0) {
-            self::$cached_result = false;
-            return false;
-        }
-
         // If the page uses the [planningindex_checkout] shortcode, it is
         // always a checkout page regardless of PMPro state or login status.
         if (self::has_checkout_shortcode()) {
             self::$cached_result = true;
             return true;
+        }
+
+        // If level is in the URL, treat it as a checkout page even when
+        // PIC_OPTION_LEVEL_ID is not yet saved in admin settings. The React
+        // app handles levelId=0 gracefully via URL param fallback.
+        if ($configured_level === 0) {
+            if (isset($_REQUEST['level']) || isset($_REQUEST['pmpro_level']) || isset($_GET['pmpro_level'])) {
+                self::$cached_result = true;
+                return true;
+            }
+            self::$cached_result = false;
+            return false;
         }
 
         if (!function_exists('pmpro_is_checkout') || !pmpro_is_checkout()) {

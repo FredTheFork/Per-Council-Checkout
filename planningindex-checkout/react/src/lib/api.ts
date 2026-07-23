@@ -72,8 +72,20 @@ function getConfig(): PicConfig {
 
 /** Check whether we're in dev/preview mode (no WordPress backend). */
 function isDevMode(): boolean {
-  const cfg = getConfig();
-  return cfg.apiBase === '';
+  // Only return true for genuine local dev environments (localhost/127.0.0.1).
+  // A missing window.PlanningIndexCheckout on a production site is a config
+  // injection failure, NOT dev mode — it should produce a clear error, not
+  // silently swallow API calls with fake data.
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname || '';
+    if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') {
+      const cfg = (window as unknown as { PlanningIndexCheckout?: PicConfig }).PlanningIndexCheckout;
+      if (!cfg || !cfg.apiBase || !cfg.nonce) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 /** Wrapper around fetch that adds the WP REST nonce and JSON headers. */
@@ -383,6 +395,12 @@ export const api = {
   }): Promise<StripeSessionResponse> {
     if (isDevMode()) {
       return { success: true, stripeUrl: '', sessionId: 'dev' };
+    }
+    // Guard: if config injection failed on a production site, throw a clear
+    // error instead of making a request with an invalid nonce/apiBase.
+    const cfg = (window as unknown as { PlanningIndexCheckout?: PicConfig }).PlanningIndexCheckout;
+    if (!cfg || !cfg.apiBase || !cfg.nonce) {
+      throw new Error('Checkout configuration failed to load. Please refresh the page and try again, or contact support if the problem persists.');
     }
     return request<StripeSessionResponse>('/stripe-session', {
       method: 'POST',

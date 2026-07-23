@@ -10,6 +10,11 @@ class PIC_AssetEnqueue
     {
         add_action('wp_enqueue_scripts', [self::class, 'enqueue_assets']);
         add_filter('script_loader_tag', [self::class, 'add_module_type'], 10, 3);
+        // Nuclear config injection: output window.PlanningIndexCheckout as a
+        // plain <script> tag in wp_head, guaranteeing it's available before
+        // the module script loads. wp_add_inline_script with 'before' position
+        // does not reliably output for type="module" scripts in the footer.
+        add_action('wp_head', [self::class, 'nuclear_inject_config'], 1);
     }
 
     public static function enqueue_assets(): void
@@ -139,6 +144,17 @@ class PIC_AssetEnqueue
 
     private static function inject_config(): void
     {
+        // Config is now injected via nuclear_inject_config() in wp_head.
+        // This method is kept for backward compatibility but no longer uses
+        // wp_add_inline_script, which doesn't work reliably with type="module"
+        // scripts enqueued in the footer.
+    }
+
+    /**
+     * Build the config array shared by both injection methods.
+     */
+    private static function build_config(): array
+    {
         $user_current_template = 'standard-planning';
         $user_name = '';
         $user_email = '';
@@ -157,6 +173,17 @@ class PIC_AssetEnqueue
         $gateway = get_option('pmpro_gateway', 'stripe');
         $level_id = intval(get_option(PIC_OPTION_LEVEL_ID, 0));
 
+        // Also check URL params for level ID as fallback
+        if ($level_id === 0) {
+            if (isset($_REQUEST['pmpro_level'])) {
+                $level_id = intval($_REQUEST['pmpro_level']);
+            } elseif (isset($_REQUEST['level'])) {
+                $level_id = intval($_REQUEST['level']);
+            } elseif (isset($_GET['pmpro_level'])) {
+                $level_id = intval($_GET['pmpro_level']);
+            }
+        }
+
         $require_billing = true;
         if (function_exists('pmpro_getLevel') && $level_id > 0) {
             $level = pmpro_getLevel($level_id);
@@ -173,7 +200,7 @@ class PIC_AssetEnqueue
             $checkout_url = home_url('/membership-checkout/');
         }
 
-        $config = [
+        return [
             'apiBase' => esc_url_raw(rest_url(PIC_REST_NAMESPACE)),
             'nonce' => wp_create_nonce('wp_rest'),
             'checkoutUrl' => esc_url_raw($checkout_url),
@@ -204,71 +231,74 @@ class PIC_AssetEnqueue
                 'templateLoadError' => 'Unable to load templates. Using defaults.',
             ],
         ];
-
-        $js = 'window.PlanningIndexCheckout = ' . wp_json_encode($config) . ';';
-        wp_add_inline_script('pic-checkout-js', $js, 'before');
     }
 
     /**
-     * Output the config as a direct inline <script> tag instead of via
-     * wp_add_inline_script. Used on pi_complete pages where the React JS
-     * bundle isn't enqueued but the config is still needed.
+     * Nuclear config injection — outputs window.PlanningIndexCheckout as a
+     * plain <script> tag directly in wp_head at priority 1. This runs before
+     * any module scripts and is independent of wp_add_inline_script, which
+     * does not reliably output before-scripts for type="module" scripts.
+     */
+    public static function nuclear_inject_config(): void
+    {
+        $should_inject = false;
+
+        if (class_exists('PIC_CheckoutDetection') && PIC_CheckoutDetection::is_checkout_page()) {
+            $should_inject = true;
+        }
+
+        // Also inject on pi_complete pages (PMPro checkout after wizard redirect)
+        if (!$should_inject && !empty($_REQUEST['pi_complete'])) {
+            $should_inject = true;
+        }
+
+        // Also inject on any page with our shortcode
+        if (!$should_inject && class_exists('PIC_CheckoutDetection') && PIC_CheckoutDetection::has_checkout_shortcode()) {
+            $should_inject = true;
+        }
+
+        // Also inject when level param is in the URL (covers cases where
+        // admin hasn't saved PIC_OPTION_LEVEL_ID yet)
+        if (!$should_inject && (isset($_REQUEST['level']) || isset($_REQUEST['pmpro_level']) || isset($_GET['pmpro_level']))) {
+            $should_inject = true;
+        }
+
+        if (!$should_inject) {
+            return;
+        }
+
+        $config = self::build_config();
+        echo '<script id="pic-config-nuclear">window.PlanningIndexCheckout = ' . wp_json_encode($config) . ';</script>' . "\n";
+    }
+
+    /**
+     * Output the config as a direct inline <script> tag. Used on pi_complete
+     * pages where the React JS bundle isn't enqueued but the config is still
+     * needed. Now delegates to build_config() for consistency.
      */
     private static function inject_config_inline(): void
     {
-        $user_current_template = 'standard-planning';
-        $user_name = '';
-        $user_email = '';
-
-        if (is_user_logged_in()) {
-            $user_id = get_current_user_id();
-            $business_info = get_user_meta($user_id, '_pi_business_info', true);
-            if (is_array($business_info) && !empty($business_info['default_template'])) {
-                $user_current_template = $business_info['default_template'];
-            }
-            $user = wp_get_current_user();
-            $user_name = $user->display_name;
-            $user_email = $user->user_email;
-        }
-
-        $gateway = get_option('pmpro_gateway', 'stripe');
-        $level_id = intval(get_option(PIC_OPTION_LEVEL_ID, 0));
-
-        $checkout_url = '';
-        if (function_exists('pmpro_url')) {
-            $checkout_url = pmpro_url('checkout');
-        }
-        if (empty($checkout_url)) {
-            $checkout_url = home_url('/membership-checkout/');
-        }
-
-        $config = [
-            'apiBase' => esc_url_raw(rest_url(PIC_REST_NAMESPACE)),
-            'nonce' => wp_create_nonce('wp_rest'),
-            'checkoutUrl' => esc_url_raw($checkout_url),
-            'checkoutNonce' => function_exists('wp_create_nonce') ? wp_create_nonce('pmpro_checkout_nonce') : '',
-            'ajaxUrl' => admin_url('admin-ajax.php'),
-            'isLoggedIn' => is_user_logged_in(),
-            'userId' => get_current_user_id(),
-            'userName' => $user_name,
-            'userEmail' => $user_email,
-            'userCurrentTemplate' => $user_current_template,
-            'unitPrice' => PIC_UNIT_PRICE,
-            'minSelection' => PIC_MIN_SELECTION,
-            'levelId' => $level_id,
-            'gateway' => $gateway,
-            'requireBilling' => true,
-            'strings' => [],
-        ];
-
-        echo '<script>window.PlanningIndexCheckout = ' . wp_json_encode($config) . ';</script>' . "\n";
+        $config = self::build_config();
+        echo '<script id="pic-config-inline">window.PlanningIndexCheckout = ' . wp_json_encode($config) . ';</script>' . "\n";
     }
 
     public static function add_module_type($tag, $handle, $src): string
     {
-        if ($handle === 'pic-checkout-js') {
-            return '<script type="module" src="' . esc_url($src) . '"></script>';
+        if ($handle !== 'pic-checkout-js') {
+            return $tag;
         }
-        return $tag;
+
+        // Extract any inline before-scripts that WordPress already concatenated
+        // into $tag (wp_add_inline_script with 'before'). The nuclear config
+        // injection in wp_head makes this unnecessary, but we preserve any
+        // inline scripts just in case.
+        $inline_before = '';
+        if (preg_match_all('#<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>#s', $tag, $m)) {
+            foreach ($m[0] as $inline_tag) {
+                $inline_before .= $inline_tag . "\n";
+            }
+        }
+
+        return $inline_before . '<script type="module" src="' . esc_url($src) . '"></script>';
     }
 }

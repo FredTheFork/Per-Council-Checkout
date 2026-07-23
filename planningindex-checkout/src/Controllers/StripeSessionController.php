@@ -137,6 +137,21 @@ class PIC_StripeSession_Controller
         if (empty($secret_key)) {
             $secret_key = get_option('stripe_secretkey', '');
         }
+        // Nuclear fallback: scan wp_options for any key matching stripe*secret
+        if (empty($secret_key)) {
+            global $wpdb;
+            $like = '%' . $wpdb->esc_like('stripe') . '%' . $wpdb->esc_like('secret') . '%';
+            $row = $wpdb->get_var(
+                $wpdb->prepare(
+                    "SELECT option_value FROM {$wpdb->options} WHERE option_name LIKE %s AND option_value LIKE %s LIMIT 1",
+                    '%stripe%secret%',
+                    '%sk_%'
+                )
+            );
+            if (!empty($row) && is_string($row) && strpos($row, 'sk_') === 0) {
+                $secret_key = $row;
+            }
+        }
 
         self::debug('secret_key found', $secret_key ? 'yes (' . substr($secret_key, 0, 7) . '...)' : 'NO');
 
@@ -205,6 +220,11 @@ class PIC_StripeSession_Controller
             'success_url'        => $success_url,
             'cancel_url'         => $cancel_url,
             'client_reference_id' => $session_key,
+            'metadata[pic_session_key]' => $session_key,
+            'metadata[pic_level_id]'    => (string) $level_id,
+            'metadata[pic_council_count]' => (string) count($councils),
+            'subscription_data[metadata][pic_session_key]' => $session_key,
+            'subscription_data[metadata][pic_level_id]'    => (string) $level_id,
         ];
 
         if (!empty($customer_email)) {

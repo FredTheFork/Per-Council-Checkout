@@ -700,6 +700,23 @@ class PIC_PmproHooks
             $secret_key = get_option('pmpro_stripe_secretkey', '');
         }
         if (empty($secret_key)) {
+            $secret_key = get_option('stripe_secretkey', '');
+        }
+        // Nuclear fallback: scan wp_options for any stripe secret key
+        if (empty($secret_key)) {
+            global $wpdb;
+            $row = $wpdb->get_var(
+                $wpdb->prepare(
+                    "SELECT option_value FROM {$wpdb->options} WHERE option_name LIKE %s AND option_value LIKE %s LIMIT 1",
+                    '%stripe%secret%',
+                    '%sk_%'
+                )
+            );
+            if (!empty($row) && is_string($row) && strpos($row, 'sk_') === 0) {
+                $secret_key = $row;
+            }
+        }
+        if (empty($secret_key)) {
             return;
         }
 
@@ -719,6 +736,31 @@ class PIC_PmproHooks
 
         $ref_key = $session['client_reference_id'] ?? '';
         $meta = $ref_key ? get_transient($ref_key) : false;
+
+        // Fallback: if the transient expired, retrieve metadata from the
+        // Stripe session itself (we stored it as session metadata during
+        // creation). This makes fulfillment robust against transient expiry.
+        if (!$meta || !is_array($meta)) {
+            $stripe_meta = $session['metadata'] ?? [];
+            $pic_key = $stripe_meta['pic_session_key'] ?? '';
+            if ($pic_key) {
+                $meta = get_transient($pic_key);
+            }
+            // If still no transient, reconstruct from Stripe session metadata
+            if (!$meta && !empty($stripe_meta['pic_level_id'])) {
+                $meta = [
+                    'level_id' => intval($stripe_meta['pic_level_id']),
+                    'councils' => [],
+                    'template' => 'standard-planning',
+                    'business' => [],
+                    'account' => [
+                        'email' => $session['customer_details']['email'] ?? '',
+                    ],
+                    'price' => 0,
+                    'user_id' => 0,
+                ];
+            }
+        }
         if (!$meta || !is_array($meta)) {
             return;
         }
