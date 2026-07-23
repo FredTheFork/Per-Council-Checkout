@@ -129,7 +129,7 @@ class PIC_CheckoutDetection
         return '<div id="planning-checkout-root">'
             . '<div style="display:flex;align-items:center;justify-content:center;min-height:60vh;font-family:system-ui,sans-serif;color:#64748b;">'
             . '<div style="text-center">'
-            . '<div style="width:40px;height:40px;border:3px solid #e2e8f0;border-top-color:#1b2534;border-radius:50%;animation:pic-spin 0.8s linear infinite;margin:0 auto 16px;"></div>'
+            . '<div style="width:40px;height:40px;border:3px solid #e2e8f0;border-top-color:#2563eb;border-radius:50%;animation:pic-spin 0.8s linear infinite;margin:0 auto 16px;"></div>'
             . '<p style="font-size:14px;">Loading checkout...</p>'
             . '</div>'
             . '</div>'

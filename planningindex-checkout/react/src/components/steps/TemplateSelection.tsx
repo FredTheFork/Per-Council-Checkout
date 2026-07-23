@@ -81,11 +81,11 @@ export function TemplateSelection() {
           Back to Councils
         </button>
         <button
-          onClick={() => setStep(userLoggedIn ? 4 : 3)}
+          onClick={() => setStep(3)}
           disabled={!canProceedFromStep(2)}
           className="btn-primary"
         >
-          {userLoggedIn ? 'Continue to Confirmation' : 'Continue to Account'}
+          Continue to Account
           <ArrowRight className="h-4 w-4" />
         </button>
       </div>

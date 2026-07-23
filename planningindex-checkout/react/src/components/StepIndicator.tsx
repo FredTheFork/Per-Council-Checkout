@@ -1,7 +1,7 @@
 import { Check } from 'lucide-react';
 import type { CheckoutStep } from '@/types';
 
-const allSteps: { id: CheckoutStep; label: string; description: string }[] = [
+const steps: { id: CheckoutStep; label: string; description: string }[] = [
   { id: 1, label: 'Councils', description: 'Select councils' },
   { id: 2, label: 'Template', description: 'Choose a template' },
   { id: 3, label: 'Account', description: 'Create your account' },
@@ -12,11 +12,9 @@ interface StepIndicatorProps {
   currentStep: CheckoutStep;
   onStepClick?: (step: CheckoutStep) => void;
   maxReachedStep: CheckoutStep;
-  hideAccount?: boolean;
 }
 
-export function StepIndicator({ currentStep, onStepClick, maxReachedStep, hideAccount }: StepIndicatorProps) {
-  const steps = hideAccount ? allSteps.filter((s) => s.id !== 3) : allSteps;
+export function StepIndicator({ currentStep, onStepClick, maxReachedStep }: StepIndicatorProps) {
   return (
     <nav aria-label="Checkout progress" className="w-full">
       <div className="flex items-center justify-between">

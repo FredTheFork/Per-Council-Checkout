@@ -16,7 +16,6 @@ export function Confirmation() {
     monthlyCost,
     totalDueToday,
     setStep,
-    userLoggedIn,
   } = useCheckout();
 
   const [loading, setLoading] = useState(false);
@@ -71,7 +70,7 @@ export function Confirmation() {
       });
 
       // 3. Verify price server-side before submitting
-      const verification = await api.verifyPrice(selectedCouncils);
+      const verification = await api.verifyPrice();
       if (!verification.success || verification.councilCount === 0) {
         throw new Error('Could not verify your selection. Please go back and select your councils.');
       }
@@ -159,7 +158,7 @@ export function Confirmation() {
                 {accountInfo?.fullName || 'Not set'} · {accountInfo?.email || ''}
               </p>
               <button
-                onClick={() => setStep(userLoggedIn ? 2 : 3)}
+                onClick={() => setStep(3)}
                 className="text-xs font-semibold text-brand-600 hover:text-brand-700"
               >
                 Edit account
@@ -267,9 +266,9 @@ export function Confirmation() {
         )}
 
         <div className="mt-6 flex items-center justify-between">
-          <button onClick={() => setStep(userLoggedIn ? 2 : 3)} className="btn-ghost">
+          <button onClick={() => setStep(3)} className="btn-ghost">
             <ArrowLeft className="h-4 w-4" />
-            {userLoggedIn ? 'Back to Templates' : 'Back to Account'}
+            Back to Account
           </button>
           <button onClick={handleComplete} disabled={loading} className="btn-primary">
             {loading ? (

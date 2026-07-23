@@ -23,7 +23,6 @@ interface CheckoutContextValue {
   selectedTemplateId: string | null;
   businessInfo: BusinessInfo;
   accountInfo: AccountInfo | null;
-  userLoggedIn: boolean;
   monthlyCost: number;
   totalDueToday: number;
   // Async-loaded data
@@ -58,7 +57,6 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo>(defaultBusinessInfo);
   const [accountInfo, setAccountInfo] = useState<AccountInfo | null>(null);
-  const [userLoggedIn, setUserLoggedIn] = useState<boolean>(false);
 
   const [councils, setCouncils] = useState<Council[]>([]);
   const [nations, setNations] = useState<readonly string[]>(defaultNations);
@@ -111,7 +109,6 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 
         // If user is already logged in via WordPress, pre-fill account info
         if (isUserLoggedIn()) {
-          setUserLoggedIn(true);
           setAccountInfo({
             username: '',
             email: '',
@@ -162,7 +159,6 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     selectedTemplateId,
     businessInfo,
     accountInfo,
-    userLoggedIn,
     monthlyCost,
     totalDueToday,
     councils,
