@@ -21,12 +21,9 @@ export function StepIndicator({ currentStep, onStepClick, maxReachedStep }: Step
   return (
     <nav aria-label="Checkout progress" className="w-full">
       <div className="flex items-center justify-between">
-        {steps.map((s, idx) => {
-          // When logged in, step 3 (Account) is auto-completed — show it
-          // with a checkmark and make it clickable to revisit, but never
-          // the "current" step.
-          const isComplete = loggedIn && s.id === 3 ? true : s.id < currentStep;
-          const isCurrent = (loggedIn && s.id === 3) ? false : s.id === currentStep;
+        {steps.filter(s => !(loggedIn && s.id === 3)).map((s, idx, arr) => {
+          const isComplete = s.id < currentStep;
+          const isCurrent = s.id === currentStep;
           const isAccessible = s.id <= maxReachedStep;
 
           return (
@@ -46,7 +43,7 @@ export function StepIndicator({ currentStep, onStepClick, maxReachedStep }: Step
                         : 'border-slate-300 bg-white text-slate-400'
                   }`}
                 >
-                  {isComplete ? <Check className="h-5 w-5" /> : s.id}
+                  {isComplete ? <Check className="h-5 w-5" /> : idx + 1}
                 </div>
                 <div className="flex flex-col items-center">
                   <span
@@ -61,7 +58,7 @@ export function StepIndicator({ currentStep, onStepClick, maxReachedStep }: Step
                   </span>
                 </div>
               </button>
-              {idx < steps.length - 1 && (
+              {idx < arr.length - 1 && (
                 <div className="mx-2 mb-6 h-0.5 flex-1 rounded-full sm:mx-4">
                   <div
                     className={`h-full rounded-full transition-colors duration-300 ${

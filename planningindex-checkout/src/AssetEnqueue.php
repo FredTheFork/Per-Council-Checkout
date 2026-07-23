@@ -14,7 +14,15 @@ class PIC_AssetEnqueue
 
     public static function enqueue_assets(): void
     {
-        if (!PIC_CheckoutDetection::is_checkout_page()) {
+        // Enqueue on the React wizard page (normal checkout detection) OR
+        // on the PMPro checkout page after the wizard POSTs back with
+        // pi_complete=1. In the latter case the React JS isn't needed
+        // (PMPro renders its own form), but the CSS must still load so
+        // the PMPro checkout page inherits the wizard's styling.
+        $is_wizard_page = PIC_CheckoutDetection::is_checkout_page();
+        $is_pi_complete = !empty($_REQUEST['pi_complete']) && self::is_per_council_level();
+
+        if (!$is_wizard_page && !$is_pi_complete) {
             return;
         }
 
@@ -26,7 +34,9 @@ class PIC_AssetEnqueue
         $js_file = $manifest['js'] ?? null;
         $css_file = $manifest['css'] ?? null;
 
-        if ($js_file && file_exists(PIC_PLUGIN_DIR . 'build/' . $js_file)) {
+        // Only load the React JS on the wizard page, not on the
+        // pi_complete PMPro checkout page (PMPro renders its own form).
+        if ($is_wizard_page && $js_file && file_exists(PIC_PLUGIN_DIR . 'build/' . $js_file)) {
             $js_url = PIC_PLUGIN_URL . 'build/' . $js_file;
             $version = filemtime(PIC_PLUGIN_DIR . 'build/' . $js_file);
 
@@ -40,12 +50,41 @@ class PIC_AssetEnqueue
             self::inject_config();
         }
 
+        // Always load CSS on both wizard and pi_complete pages.
         if ($css_file && file_exists(PIC_PLUGIN_DIR . 'build/' . $css_file)) {
             $css_url = PIC_PLUGIN_URL . 'build/' . $css_file;
             $version = filemtime(PIC_PLUGIN_DIR . 'build/' . $css_file);
 
             wp_enqueue_style('pic-checkout-css', $css_url, [], $version);
         }
+
+        // Also inject the config on pi_complete pages so the PmproHooks
+        // have access to the level ID and gateway via window.PlanningIndexCheckout.
+        if ($is_pi_complete && !$is_wizard_page) {
+            self::inject_config_inline();
+        }
+    }
+
+    /**
+     * Check if the current request is for the configured per-council level,
+     * regardless of pi_complete. Used to decide whether to enqueue CSS
+     * on the PMPro checkout page after the wizard redirects.
+     */
+    private static function is_per_council_level(): bool
+    {
+        $configured_level = intval(get_option(PIC_OPTION_LEVEL_ID, 0));
+        if ($configured_level === 0) {
+            return false;
+        }
+
+        $current_level = 0;
+        if (isset($_REQUEST['level'])) {
+            $current_level = intval($_REQUEST['level']);
+        } elseif (isset($_REQUEST['pmpro_level'])) {
+            $current_level = intval($_REQUEST['pmpro_level']);
+        }
+
+        return $current_level === $configured_level;
     }
 
     private static function read_manifest(): ?array
@@ -168,6 +207,61 @@ class PIC_AssetEnqueue
 
         $js = 'window.PlanningIndexCheckout = ' . wp_json_encode($config) . ';';
         wp_add_inline_script('pic-checkout-js', $js, 'before');
+    }
+
+    /**
+     * Output the config as a direct inline <script> tag instead of via
+     * wp_add_inline_script. Used on pi_complete pages where the React JS
+     * bundle isn't enqueued but the config is still needed.
+     */
+    private static function inject_config_inline(): void
+    {
+        $user_current_template = 'standard-planning';
+        $user_name = '';
+        $user_email = '';
+
+        if (is_user_logged_in()) {
+            $user_id = get_current_user_id();
+            $business_info = get_user_meta($user_id, '_pi_business_info', true);
+            if (is_array($business_info) && !empty($business_info['default_template'])) {
+                $user_current_template = $business_info['default_template'];
+            }
+            $user = wp_get_current_user();
+            $user_name = $user->display_name;
+            $user_email = $user->user_email;
+        }
+
+        $gateway = get_option('pmpro_gateway', 'stripe');
+        $level_id = intval(get_option(PIC_OPTION_LEVEL_ID, 0));
+
+        $checkout_url = '';
+        if (function_exists('pmpro_url')) {
+            $checkout_url = pmpro_url('checkout');
+        }
+        if (empty($checkout_url)) {
+            $checkout_url = home_url('/membership-checkout/');
+        }
+
+        $config = [
+            'apiBase' => esc_url_raw(rest_url(PIC_REST_NAMESPACE)),
+            'nonce' => wp_create_nonce('wp_rest'),
+            'checkoutUrl' => esc_url_raw($checkout_url),
+            'checkoutNonce' => function_exists('wp_create_nonce') ? wp_create_nonce('pmpro_checkout_nonce') : '',
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'isLoggedIn' => is_user_logged_in(),
+            'userId' => get_current_user_id(),
+            'userName' => $user_name,
+            'userEmail' => $user_email,
+            'userCurrentTemplate' => $user_current_template,
+            'unitPrice' => PIC_UNIT_PRICE,
+            'minSelection' => PIC_MIN_SELECTION,
+            'levelId' => $level_id,
+            'gateway' => $gateway,
+            'requireBilling' => true,
+            'strings' => [],
+        ];
+
+        echo '<script>window.PlanningIndexCheckout = ' . wp_json_encode($config) . ';</script>' . "\n";
     }
 
     public static function add_module_type($tag, $handle, $src): string

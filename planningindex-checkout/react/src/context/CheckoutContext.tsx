@@ -52,7 +52,7 @@ const defaultNations = ['England', 'Scotland', 'Wales', 'Northern Ireland'] as c
 const CheckoutContext = createContext<CheckoutContextValue | null>(null);
 
 export function CheckoutProvider({ children }: { children: ReactNode }) {
-  const [step, setStep] = useState<CheckoutStep>(1);
+  const [step, setStep] = useState<CheckoutStep>(isUserLoggedIn() ? 4 : 1);
   const [selectedCouncils, setSelectedCouncils] = useState<string[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo>(defaultBusinessInfo);
