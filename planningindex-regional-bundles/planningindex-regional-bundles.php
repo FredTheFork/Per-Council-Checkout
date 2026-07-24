@@ -30,6 +30,7 @@ define('PIRB_SESSION_KEY', 'pirb_checkout_session');
 define('PIRB_OPTION_LEVEL_ID', 'pirb_level_id');
 define('PIRB_REST_NAMESPACE', 'planningindex-regional/v1');
 
+require_once PIRB_PLUGIN_DIR . 'includes/region-bundles.php';
 require_once PIRB_PLUGIN_DIR . 'src/Plugin.php';
 require_once PIRB_PLUGIN_DIR . 'src/CheckoutDetection.php';
 require_once PIRB_PLUGIN_DIR . 'src/AssetEnqueue.php';
