@@ -27,10 +27,10 @@ class PIRB_AssetEnqueue
         $js_url = '';
         $css_url = '';
 
-        if ($manifest && isset($manifest['src/main.tsx']['file'])) {
-            $js_url = PIRB_PLUGIN_URL . 'build/' . $manifest['src/main.tsx']['file'];
-            if (isset($manifest['src/main.tsx']['css']) && is_array($manifest['src/main.tsx']['css'])) {
-                $css_url = PIRB_PLUGIN_URL . 'build/' . $manifest['src/main.tsx']['css'][0];
+        if ($manifest && isset($manifest['index.html']['file'])) {
+            $js_url = PIRB_PLUGIN_URL . 'build/' . $manifest['index.html']['file'];
+            if (isset($manifest['index.html']['css']) && is_array($manifest['index.html']['css'])) {
+                $css_url = PIRB_PLUGIN_URL . 'build/' . $manifest['index.html']['css'][0];
             }
         }
 
