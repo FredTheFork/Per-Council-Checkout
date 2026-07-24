@@ -6,60 +6,101 @@ if (!defined('ABSPATH')) {
 
 class PIRB_CheckoutDetection
 {
+    private static $cached_result = null;
+
     public static function init(): void
     {
-        add_filter('the_content', [__CLASS__, 'filter_checkout_content'], 10);
-        add_filter('pmpro_checkout_preheader', [__CLASS__, 'maybe_render_react_checkout'], 10);
+        add_action('template_redirect', [__CLASS__, 'maybe_render_react_checkout'], 5);
+        add_filter('the_content', [__CLASS__, 'filter_checkout_content'], 20);
     }
 
     public static function is_checkout_page(): bool
     {
-        return self::is_regional_bundles_checkout() || self::has_checkout_shortcode();
+        return self::is_regional_bundles_checkout();
     }
 
     public static function is_regional_bundles_checkout(): bool
     {
+        if (self::$cached_result !== null) {
+            return self::$cached_result;
+        }
+
+        // When pirb_complete is set, the React wizard is done and the user
+        // has been redirected to the PMPro checkout page. Let PMPro render.
+        if (!empty($_REQUEST['pirb_complete'])) {
+            self::$cached_result = false;
+            return false;
+        }
+
         $configured_level = intval(get_option(PIRB_OPTION_LEVEL_ID, 0));
 
-        $request_level = 0;
+        if (self::has_checkout_shortcode()) {
+            self::$cached_result = true;
+            return true;
+        }
+
+        if ($configured_level === 0) {
+            if (isset($_REQUEST['level']) || isset($_REQUEST['pmpro_level']) || isset($_GET['pmpro_level'])) {
+                self::$cached_result = true;
+                return true;
+            }
+            self::$cached_result = false;
+            return false;
+        }
+
+        if (!function_exists('pmpro_is_checkout') || !pmpro_is_checkout()) {
+            $request_uri = isset($_SERVER['REQUEST_URI']) ? parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) : '';
+            if ($request_uri) {
+                $matched = false;
+                foreach (['/membership-checkout', '/membership/checkout', '/checkout', '/register'] as $pattern) {
+                    if (strpos($request_uri, $pattern) !== false) {
+                        $matched = true;
+                        break;
+                    }
+                }
+                if (!$matched && !isset($_GET['level']) && !isset($_REQUEST['level']) && !isset($_REQUEST['pmpro_level'])) {
+                    self::$cached_result = false;
+                    return false;
+                }
+            } else {
+                self::$cached_result = false;
+                return false;
+            }
+        }
+
+        if (empty($_REQUEST['level']) && empty($_REQUEST['pmpro_level']) && empty($_GET['pmpro_level'])) {
+            if (!isset($GLOBALS['pmpro_level']->id)) {
+                return false;
+            }
+        }
+
+        $current_level = 0;
         if (isset($_REQUEST['pmpro_level'])) {
-            $request_level = intval($_REQUEST['pmpro_level']);
+            $current_level = intval($_REQUEST['pmpro_level']);
         } elseif (isset($_REQUEST['level'])) {
-            $request_level = intval($_REQUEST['level']);
+            $current_level = intval($_REQUEST['level']);
         } elseif (isset($_GET['pmpro_level'])) {
-            $request_level = intval($_GET['pmpro_level']);
+            $current_level = intval($_GET['pmpro_level']);
+        } elseif (isset($GLOBALS['pmpro_level']->id)) {
+            $current_level = intval($GLOBALS['pmpro_level']->id);
         }
 
-        if ($request_level > 0) {
-            if ($configured_level > 0 && $request_level === $configured_level) {
-                return true;
-            }
-            if ($request_level === 59) {
-                return true;
-            }
+        if ($current_level === 0) {
+            return false;
         }
 
-        global $pmpro_level;
-        if (is_object($pmpro_level) && isset($pmpro_level->id)) {
-            $level_id = intval($pmpro_level->id);
-            if ($configured_level > 0 && $level_id === $configured_level) {
-                return true;
-            }
-            if ($level_id === 59) {
-                return true;
-            }
-        }
-
-        return false;
+        // Match configured level OR hardcoded fallback level 59
+        self::$cached_result = ($current_level === $configured_level) || ($current_level === 59);
+        return self::$cached_result;
     }
 
     public static function has_checkout_shortcode(): bool
     {
-        global $post;
-        if (!$post) {
+        $post = get_post();
+        if (!$post || empty($post->post_content)) {
             return false;
         }
-        return has_shortcode($post->post_content, 'regional_bundles_checkout');
+        return strpos($post->post_content, 'regional_bundles_checkout') !== false;
     }
 
     public static function maybe_render_react_checkout(): void
@@ -67,24 +108,58 @@ class PIRB_CheckoutDetection
         if (!self::is_regional_bundles_checkout()) {
             return;
         }
-        self::render_root_div();
+
+        if (!empty($_REQUEST['pirb_complete'])) {
+            return;
+        }
+
+        if (isset($_GET['confirm']) || isset($_GET['review'])) {
+            return;
+        }
+
+        // Only intercept GET requests (and non-submit POSTs)
+        $is_real_load = (
+            $_SERVER['REQUEST_METHOD'] === 'GET' ||
+            ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($_POST['submit-checkout']))
+        );
+
+        if (!$is_real_load) {
+            return;
+        }
+
+        ob_start();
+        get_header();
+        echo self::render_root_div();
+        get_footer();
+
+        $output = ob_get_clean();
+        echo $output;
+        exit;
     }
 
-    public static function filter_checkout_content($content)
+    public static function render_root_div(): string
     {
-        if (!self::is_checkout_page()) {
+        return '<div id="pirb-checkout-root">'
+            . '<div style="display:flex;align-items:center;justify-content:center;min-height:60vh;font-family:system-ui,sans-serif;color:#64748b;">'
+            . '<div style="text-align:center;">'
+            . '<div style="width:44px;height:44px;border:3px solid #e2e8f0;border-top-color:#0c8fe6;border-radius:50%;animation:pirb-spin 0.8s linear infinite;margin:0 auto 16px;"></div>'
+            . '<p style="font-size:14px;margin:0;">Loading checkout...</p>'
+            . '</div>'
+            . '</div>'
+            . '<style>@keyframes pirb-spin{to{transform:rotate(360deg)}}</style>'
+            . '</div>';
+    }
+
+    public static function filter_checkout_content($content): string
+    {
+        if (!self::is_regional_bundles_checkout()) {
             return $content;
         }
-        return self::render_root_div(true) . $content;
-    }
 
-    public static function render_root_div(bool $return = false): string
-    {
-        $html = '<div id="pirb-checkout-root"></div>';
-        if ($return) {
-            return $html;
+        if (!empty($_REQUEST['pirb_complete'])) {
+            return $content;
         }
-        echo $html;
-        return $html;
+
+        return self::render_root_div();
     }
 }

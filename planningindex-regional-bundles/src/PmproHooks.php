@@ -480,6 +480,14 @@ class PIRB_PmproHooks
             return;
         }
 
+        // Don't intercept the actual form submission — let PMPro process it
+        if (
+            $_SERVER['REQUEST_METHOD'] === 'POST'
+            && (isset($_POST['submit-checkout']) || isset($_POST['pmpro_submit']) || isset($_POST['javascriptok']))
+        ) {
+            return;
+        }
+
         $custom = get_stylesheet_directory() . '/pages/checkout.php';
         if (file_exists($custom)) {
             require $custom;

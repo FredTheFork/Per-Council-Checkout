@@ -16,7 +16,10 @@ class PIRB_AssetEnqueue
 
     public static function enqueue_assets(): void
     {
-        if (!PIRB_CheckoutDetection::is_checkout_page()) {
+        $is_wizard_page = PIRB_CheckoutDetection::is_checkout_page();
+        $is_complete_page = !empty($_REQUEST['pirb_complete']) && self::is_regional_bundles_level();
+
+        if (!$is_wizard_page && !$is_complete_page) {
             return;
         }
 
@@ -45,13 +48,33 @@ class PIRB_AssetEnqueue
             }
         }
 
-        if (!empty($js_url)) {
+        // Only load the React JS on the wizard page, not on the pirb_complete
+        // PMPro checkout page (PMPro renders its own form there).
+        if ($is_wizard_page && !empty($js_url)) {
             wp_enqueue_script('pirb-checkout-js', $js_url, [], PIRB_VERSION, true);
         }
 
+        // Always load CSS on both wizard and pirb_complete pages.
         if (!empty($css_url)) {
             wp_enqueue_style('pirb-checkout-css', $css_url, [], PIRB_VERSION);
         }
+    }
+
+    private static function is_regional_bundles_level(): bool
+    {
+        $configured_level = intval(get_option(PIRB_OPTION_LEVEL_ID, 0));
+        if ($configured_level === 0) {
+            return false;
+        }
+
+        $current_level = 0;
+        if (isset($_REQUEST['pmpro_level'])) {
+            $current_level = intval($_REQUEST['pmpro_level']);
+        } elseif (isset($_REQUEST['level'])) {
+            $current_level = intval($_REQUEST['level']);
+        }
+
+        return $current_level === $configured_level;
     }
 
     public static function read_manifest(): ?array
@@ -151,7 +174,25 @@ class PIRB_AssetEnqueue
 
     public static function nuclear_inject_config(): void
     {
-        if (!PIRB_CheckoutDetection::is_checkout_page()) {
+        $should_inject = false;
+
+        if (PIRB_CheckoutDetection::is_checkout_page()) {
+            $should_inject = true;
+        }
+
+        if (!$should_inject && !empty($_REQUEST['pirb_complete'])) {
+            $should_inject = true;
+        }
+
+        if (!$should_inject && PIRB_CheckoutDetection::has_checkout_shortcode()) {
+            $should_inject = true;
+        }
+
+        if (!$should_inject && (isset($_REQUEST['level']) || isset($_REQUEST['pmpro_level']) || isset($_GET['pmpro_level']))) {
+            $should_inject = true;
+        }
+
+        if (!$should_inject) {
             return;
         }
 
