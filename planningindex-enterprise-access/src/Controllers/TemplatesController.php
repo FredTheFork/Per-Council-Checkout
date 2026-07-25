@@ -17,6 +17,8 @@ class PIE_TemplatesController
                 'included'    => true,
                 'price'       => 0,
                 'accent'      => 'brand',
+                'previewUrl'  => '',
+                'thumbnailUrl' => '',
             ],
             [
                 'id'          => 'detailed-design',
@@ -26,6 +28,8 @@ class PIE_TemplatesController
                 'included'    => true,
                 'price'       => 0,
                 'accent'      => 'success',
+                'previewUrl'  => '',
+                'thumbnailUrl' => '',
             ],
             [
                 'id'          => 'heritage-statement',
@@ -35,6 +39,8 @@ class PIE_TemplatesController
                 'included'    => true,
                 'price'       => 0,
                 'accent'      => 'accent',
+                'previewUrl'  => '',
+                'thumbnailUrl' => '',
             ],
             [
                 'id'          => 'planning-appeal',
@@ -44,6 +50,8 @@ class PIE_TemplatesController
                 'included'    => true,
                 'price'       => 0,
                 'accent'      => 'warning',
+                'previewUrl'  => '',
+                'thumbnailUrl' => '',
             ],
             [
                 'id'          => 'community-infra',
@@ -53,6 +61,8 @@ class PIE_TemplatesController
                 'included'    => true,
                 'price'       => 0,
                 'accent'      => 'brand',
+                'previewUrl'  => '',
+                'thumbnailUrl' => '',
             ],
             [
                 'id'          => 'environmental-impact',
@@ -62,6 +72,8 @@ class PIE_TemplatesController
                 'included'    => true,
                 'price'       => 0,
                 'accent'      => 'success',
+                'previewUrl'  => '',
+                'thumbnailUrl' => '',
             ],
         ];
 

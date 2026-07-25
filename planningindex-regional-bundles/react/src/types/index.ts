@@ -1,10 +1,9 @@
 export type CheckoutStep = 1 | 2 | 3 | 4;
 
-export interface Region {
-  id: string;
+export interface Council {
   name: string;
-  price: number;
-  councils: string[];
+  region: string;
+  nation: 'England' | 'Scotland' | 'Wales' | 'Northern Ireland';
 }
 
 export interface PdfTemplate {
@@ -15,6 +14,8 @@ export interface PdfTemplate {
   included: boolean;
   price: number;
   accent: string;
+  previewUrl: string;
+  thumbnailUrl: string;
 }
 
 export interface BusinessInfo {
@@ -33,7 +34,6 @@ export interface AccountInfo {
 
 export interface CheckoutState {
   step: CheckoutStep;
-  selectedRegion: string | null;
   selectedCouncils: string[];
   selectedTemplateId: string | null;
   businessInfo: BusinessInfo;

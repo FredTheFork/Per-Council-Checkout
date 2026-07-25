@@ -1,6 +1,10 @@
 export type CheckoutStep = 1 | 2 | 3 | 4;
 
-export type TeamSeats = 1 | 3 | 5;
+export interface Council {
+  name: string;
+  region: string;
+  nation: 'England' | 'Scotland' | 'Wales' | 'Northern Ireland';
+}
 
 export interface PdfTemplate {
   id: string;
@@ -10,6 +14,8 @@ export interface PdfTemplate {
   included: boolean;
   price: number;
   accent: string;
+  previewUrl: string;
+  thumbnailUrl: string;
 }
 
 export interface BusinessInfo {
@@ -28,8 +34,8 @@ export interface AccountInfo {
 
 export interface CheckoutState {
   step: CheckoutStep;
+  selectedCouncils: string[];
   selectedTemplateId: string | null;
-  teamSeats: TeamSeats;
   businessInfo: BusinessInfo;
   accountInfo: AccountInfo | null;
 }

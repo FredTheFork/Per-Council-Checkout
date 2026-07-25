@@ -46,6 +46,8 @@ class PIT_Templates_Controller
                 'included' => true,
                 'price' => 0,
                 'accent' => 'brand',
+                'previewUrl' => '',
+                'thumbnailUrl' => '',
             ],
             [
                 'id' => 'detailed-design',
@@ -55,6 +57,8 @@ class PIT_Templates_Controller
                 'included' => true,
                 'price' => 0,
                 'accent' => 'success',
+                'previewUrl' => '',
+                'thumbnailUrl' => '',
             ],
             [
                 'id' => 'heritage-statement',
@@ -64,6 +68,8 @@ class PIT_Templates_Controller
                 'included' => true,
                 'price' => 0,
                 'accent' => 'accent',
+                'previewUrl' => '',
+                'thumbnailUrl' => '',
             ],
             [
                 'id' => 'planning-appeal',
@@ -73,6 +79,8 @@ class PIT_Templates_Controller
                 'included' => true,
                 'price' => 0,
                 'accent' => 'warning',
+                'previewUrl' => '',
+                'thumbnailUrl' => '',
             ],
             [
                 'id' => 'community-infra',
@@ -82,6 +90,8 @@ class PIT_Templates_Controller
                 'included' => true,
                 'price' => 0,
                 'accent' => 'brand',
+                'previewUrl' => '',
+                'thumbnailUrl' => '',
             ],
             [
                 'id' => 'environmental-impact',
@@ -91,6 +101,8 @@ class PIT_Templates_Controller
                 'included' => true,
                 'price' => 0,
                 'accent' => 'success',
+                'previewUrl' => '',
+                'thumbnailUrl' => '',
             ],
         ];
     }

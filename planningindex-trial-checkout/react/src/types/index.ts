@@ -14,6 +14,8 @@ export interface PdfTemplate {
   included: boolean;
   price: number;
   accent: string;
+  previewUrl: string;
+  thumbnailUrl: string;
 }
 
 export interface BusinessInfo {

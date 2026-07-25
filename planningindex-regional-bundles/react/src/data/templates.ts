@@ -9,6 +9,8 @@ export const templates: PdfTemplate[] = [
     included: true,
     price: 0,
     accent: 'brand',
+    previewUrl: '',
+    thumbnailUrl: '',
   },
   {
     id: 'detailed-design',
@@ -18,6 +20,8 @@ export const templates: PdfTemplate[] = [
     included: true,
     price: 0,
     accent: 'success',
+    previewUrl: '',
+    thumbnailUrl: '',
   },
   {
     id: 'heritage-statement',
@@ -27,6 +31,8 @@ export const templates: PdfTemplate[] = [
     included: true,
     price: 0,
     accent: 'accent',
+    previewUrl: '',
+    thumbnailUrl: '',
   },
   {
     id: 'planning-appeal',
@@ -36,6 +42,8 @@ export const templates: PdfTemplate[] = [
     included: true,
     price: 0,
     accent: 'warning',
+    previewUrl: '',
+    thumbnailUrl: '',
   },
   {
     id: 'community-infra',
@@ -45,6 +53,8 @@ export const templates: PdfTemplate[] = [
     included: true,
     price: 0,
     accent: 'brand',
+    previewUrl: '',
+    thumbnailUrl: '',
   },
   {
     id: 'environmental-impact',
@@ -54,6 +64,8 @@ export const templates: PdfTemplate[] = [
     included: true,
     price: 0,
     accent: 'success',
+    previewUrl: '',
+    thumbnailUrl: '',
   },
 ];
 
