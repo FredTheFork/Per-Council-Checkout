@@ -570,8 +570,19 @@ class PIT_PmproHooks
      * Restrict access for expired trial users. They can only access the
      * checkout page, the account page, and the cancel-trial action.
      */
-    public static function restrict_expired_trial($access, $post, $user): array
+    public static function restrict_expired_trial($access, $post, $user)
     {
+        // PMPro passes $access as a boolean (true) when access is allowed.
+        // Normalize to the array shape PMPro expects so we never return a
+        // raw bool from a function that must return an array.
+        if (!is_array($access)) {
+            $access = [
+                'allowed' => (bool) $access,
+                'message' => '',
+                'redirect' => '',
+            ];
+        }
+
         if (!is_user_logged_in()) {
             return $access;
         }
