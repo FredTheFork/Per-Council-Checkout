@@ -80,7 +80,7 @@ export function RegionSelection() {
           </div>
         </div>
 
-        <div className="scrollbar-thin grid max-h-[560px] grid-cols-1 gap-3 overflow-y-auto pr-1">
+        <div className="scrollbar-thin grid max-h-[560px] grid-cols-1 gap-3 overflow-y-auto p-1 pl-0">
           {filteredRegions.map((region) => {
             const isSelected = selectedRegion === region.id;
             return (

@@ -125,13 +125,13 @@ export function CouncilSelection() {
           </div>
         )}
 
-        <div className="scrollbar-thin grid max-h-[480px] grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+        <div className="scrollbar-thin grid max-h-[480px] grid-cols-1 gap-2 overflow-y-auto p-1 pl-0 sm:grid-cols-2">
           {filteredCouncils.map((council) => {
             const isSelected = selectedCouncils.includes(council.name);
             const isDisabled = !isSelected && atMax;
             return (
               <button
-                key={council.name}
+                key={`${council.name}-${council.region}-${council.nation}`}
                 onClick={() => toggleCouncil(council.name)}
                 disabled={isDisabled}
                 className={`group flex items-center justify-between rounded-xl border px-4 py-3 text-left transition-all duration-200 ${
