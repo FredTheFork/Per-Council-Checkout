@@ -52,6 +52,15 @@
 }
 
 @layer utilities {
+  .template-html-preview {
+    font-size: 11px;
+    line-height: 1.6;
+    color: #000;
+  }
+  .template-html-preview table { border-collapse: collapse; }
+  .template-html-preview h3 { font-weight: bold; margin-top: 16px; margin-bottom: 8px; }
+  .template-html-preview p { margin-bottom: 12px; }
+
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: rgb(203 213 225) transparent;

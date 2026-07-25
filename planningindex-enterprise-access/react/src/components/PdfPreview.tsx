@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { FileText, Maximize2, X, ZoomIn, ZoomOut, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { FileText, Maximize2, X, ZoomIn, ZoomOut } from 'lucide-react';
 import type { PdfTemplate } from '@/types';
+import { dummyData } from '@/data/templates';
 
 interface PdfPreviewProps {
   template: PdfTemplate | null;
@@ -13,9 +14,20 @@ const accentClasses: Record<string, { bg: string; text: string; ring: string; ba
   warning: { bg: 'bg-warning-50', text: 'text-warning-600', ring: 'ring-warning-500', badge: 'bg-warning-100 text-warning-700' },
 };
 
+function replacePlaceholders(html: string, data: Record<string, string>): string {
+  return html.replace(/\[([a-z_]+)\]/g, (match, key: string) => {
+    return data[key] || match;
+  });
+}
+
 export function PdfPreview({ template }: PdfPreviewProps) {
   const [zoom, setZoom] = useState(100);
   const [fullscreen, setFullscreen] = useState(false);
+
+  const processedHtml = useMemo(() => {
+    if (!template?.html) return '';
+    return replacePlaceholders(template.html, dummyData);
+  }, [template]);
 
   if (!template) {
     return (
@@ -29,7 +41,7 @@ export function PdfPreview({ template }: PdfPreviewProps) {
   }
 
   const accent = accentClasses[template.accent] || accentClasses.brand;
-  const hasPreview = template.previewUrl !== '';
+  const hasHtml = template.html !== '';
 
   return (
     <>
@@ -66,29 +78,29 @@ export function PdfPreview({ template }: PdfPreviewProps) {
           </div>
         </div>
 
-        <div className="relative flex min-h-[400px] items-center justify-center overflow-auto bg-slate-100 p-4">
-          {hasPreview ? (
-            <iframe
-              src={`${template.previewUrl}#toolbar=0&navpanes=0&view=FitH`}
-              title={`${template.name} preview`}
-              className="rounded-lg bg-white shadow-lg transition-all"
+        <div className="relative flex min-h-[500px] items-center justify-center overflow-auto bg-slate-200 p-6">
+          {hasHtml ? (
+            <div
+              className="mx-auto bg-white shadow-lg transition-all"
               style={{
                 width: `${zoom}%`,
-                height: '100%',
-                minHeight: '400px',
-                border: 'none',
+                maxWidth: '650px',
+                minHeight: '500px',
+                padding: '40px',
               }}
-            />
+            >
+              <div
+                className="template-html-preview"
+                dangerouslySetInnerHTML={{ __html: processedHtml }}
+              />
+            </div>
           ) : (
             <div className="flex h-full min-h-[400px] w-full max-w-md flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-white py-16">
               <div className={`mb-4 flex h-16 w-16 items-center justify-center rounded-2xl ${accent.bg}`}>
                 <FileText className={`h-8 w-8 ${accent.text}`} />
               </div>
               <p className="text-sm font-semibold text-slate-600">{template.name}</p>
-              <p className="mt-1 text-xs text-slate-400">PDF preview will appear here</p>
-              <div className="mt-4 rounded-md bg-slate-100 px-3 py-1.5">
-                <span className="text-xs font-medium text-slate-400">Preview not yet available</span>
-              </div>
+              <p className="mt-1 text-xs text-slate-400">Template preview will appear here</p>
             </div>
           )}
         </div>
@@ -117,21 +129,21 @@ export function PdfPreview({ template }: PdfPreviewProps) {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="flex-1 overflow-auto bg-slate-200 p-6">
-              {hasPreview ? (
-                <iframe
-                  src={`${template.previewUrl}#toolbar=1&navpanes=1&view=FitH`}
-                  title={`${template.name} fullscreen preview`}
-                  className="mx-auto rounded-lg bg-white shadow-2xl"
-                  style={{ width: '90%', height: '100%', minHeight: '70vh', border: 'none' }}
-                />
+            <div className="flex-1 overflow-auto bg-slate-200 p-8">
+              {hasHtml ? (
+                <div className="mx-auto bg-white shadow-2xl" style={{ width: '90%', maxWidth: '700px', minHeight: '70vh', padding: '50px' }}>
+                  <div
+                    className="template-html-preview"
+                    dangerouslySetInnerHTML={{ __html: processedHtml }}
+                  />
+                </div>
               ) : (
                 <div className="flex h-full min-h-[60vh] flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-400 bg-white">
                   <div className={`mb-4 flex h-20 w-20 items-center justify-center rounded-2xl ${accent.bg}`}>
                     <FileText className={`h-10 w-10 ${accent.text}`} />
                   </div>
                   <p className="text-base font-semibold text-slate-600">{template.name}</p>
-                  <p className="mt-1 text-sm text-slate-400">PDF preview will appear here</p>
+                  <p className="mt-1 text-sm text-slate-400">Template preview will appear here</p>
                 </div>
               )}
             </div>
@@ -150,11 +162,10 @@ interface TemplateThumbnailsProps {
 
 export function TemplateThumbnails({ templates, selectedId, onSelect }: TemplateThumbnailsProps) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
       {templates.map((template) => {
         const isSelected = selectedId === template.id;
         const accent = accentClasses[template.accent] || accentClasses.brand;
-        const hasThumb = template.thumbnailUrl !== '';
 
         return (
           <button
@@ -166,16 +177,8 @@ export function TemplateThumbnails({ templates, selectedId, onSelect }: Template
                 : 'border-slate-200 hover:border-slate-300 hover:shadow-sm'
             }`}
           >
-            <div className={`relative flex h-24 items-center justify-center ${accent.bg}`}>
-              {hasThumb ? (
-                <img
-                  src={template.thumbnailUrl}
-                  alt={template.name}
-                  className="h-full w-full object-cover object-top"
-                />
-              ) : (
-                <FileText className={`h-8 w-8 ${accent.text} opacity-60`} />
-              )}
+            <div className={`relative flex h-20 items-center justify-center ${accent.bg}`}>
+              <FileText className={`h-7 w-7 ${accent.text} opacity-60`} />
               {isSelected && (
                 <div className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-white shadow-sm">
                   <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>

@@ -16,6 +16,7 @@ export interface PdfTemplate {
   accent: string;
   previewUrl: string;
   thumbnailUrl: string;
+  html: string;
 }
 
 export interface BusinessInfo {
