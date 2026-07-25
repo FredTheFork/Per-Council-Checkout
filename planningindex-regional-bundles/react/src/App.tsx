@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { CheckoutProvider, useCheckout } from '@/context/CheckoutContext';
 import { Header } from '@/components/Header';
+import { Footer } from '@/components/Footer';
 import { StepIndicator } from '@/components/StepIndicator';
 import { RegionSelection } from '@/components/steps/RegionSelection';
 import { TemplateSelection } from '@/components/steps/TemplateSelection';
@@ -58,20 +59,7 @@ function CheckoutFlow() {
         </div>
       </main>
 
-      <footer className="border-t border-slate-200/60 bg-white">
-        <div className="mx-auto max-w-6xl px-6 py-6">
-          <div className="flex flex-col items-center justify-between gap-2 sm:flex-row">
-            <p className="text-xs text-slate-400">
-              © {new Date().getFullYear()} Planning Index. All rights reserved.
-            </p>
-            <div className="flex items-center gap-4 text-xs text-slate-400">
-              <a href="#" className="hover:text-slate-600">Terms</a>
-              <a href="#" className="hover:text-slate-600">Privacy</a>
-              <a href="#" className="hover:text-slate-600">Cookies</a>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

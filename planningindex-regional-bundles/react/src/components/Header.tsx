@@ -1,29 +1,22 @@
-import { Building2 } from 'lucide-react';
-
 export function Header() {
   return (
-    <header className="border-b border-slate-200/80 bg-white/80 backdrop-blur-sm">
+    <header className="bg-brand-600">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm">
-            <Building2 className="h-5 w-5" />
-          </div>
-          <div className="flex flex-col leading-none">
-            <span className="font-display text-lg font-bold tracking-tight text-slate-900">
-              Planning Index
-            </span>
-            <span className="text-[11px] font-medium tracking-wide text-slate-400">
-              planningindex.co.uk
-            </span>
-          </div>
-        </div>
+        <a href="https://planningindex.co.uk" className="flex items-baseline gap-0.5">
+          <span className="font-display text-lg font-bold tracking-tight text-white">
+            PlanningIndex
+          </span>
+          <span className="font-display text-lg font-bold tracking-tight text-orange-500">
+            .co.uk
+          </span>
+        </a>
         <div className="hidden items-center gap-2 sm:flex">
-          <span className="text-sm text-slate-500">Need help?</span>
+          <span className="text-sm text-brand-100">Need help?</span>
           <a
-            href="mailto:support@planningindex.co.uk"
-            className="text-sm font-semibold text-brand-600 hover:text-brand-700"
+            href="https://planningindex.co.uk/contact"
+            className="text-sm font-semibold text-white hover:text-orange-400"
           >
-            Contact support
+            Contact us
           </a>
         </div>
       </div>
