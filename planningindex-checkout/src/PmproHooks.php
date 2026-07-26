@@ -926,5 +926,8 @@ class PIC_PmproHooks
         }
 
         error_log('[PIC] handle_stripe_success: success — user_id=' . $user_id . ' level=' . $level_id . ' price=' . $price);
+
+        wp_safe_redirect(home_url('/membership-account/'));
+        exit;
     }
 }

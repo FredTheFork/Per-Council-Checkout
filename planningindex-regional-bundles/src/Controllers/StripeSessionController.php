@@ -161,7 +161,7 @@ class PIRB_StripeSession_Controller
 
         $session_key = 'pirb_stripe_' . wp_generate_password(20, false);
 
-        $success_url = home_url('/membership-account/');
+        $success_url = home_url('/');
         $success_url = add_query_arg([
             'pirb_stripe_success' => '1',
             'session_id'          => '{CHECKOUT_SESSION_ID}',
