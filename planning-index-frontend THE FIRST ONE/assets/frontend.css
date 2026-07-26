@@ -959,7 +959,7 @@
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   z-index: 999999 !important;
-  display: none;
+  display: none !important;
   align-items: center;
   justify-content: center;
   visibility: hidden;
@@ -1046,6 +1046,7 @@
   cursor: pointer;
   transition: all 0.15s;
   z-index: 10;
+  pointer-events: auto !important;
 }
 
 .pi-modal-close:hover {
@@ -1182,6 +1183,10 @@
 }
 
 /* Save Modal Specific */
+#pi-save-modal.pi-modal-overlay {
+  z-index: 1000001 !important;
+}
+
 .pi-save-desc {
   font-size: 0.875rem;
   color: var(--pi-text-muted);

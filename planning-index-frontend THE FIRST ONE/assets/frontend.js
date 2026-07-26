@@ -953,12 +953,12 @@
       `);
     }
 
-    $('#pi-modal').addClass('open');
+    $('#pi-modal').addClass('open').css('display', 'flex');
     document.body.style.overflow = 'hidden';
   }
 
   function closeModal() {
-    $('#pi-modal').removeClass('open');
+    $('#pi-modal').removeClass('open').css('display', 'none');
     document.body.style.overflow = '';
     currentModalPostId = null;
   }
@@ -1579,9 +1579,8 @@
         }
       });
 
-      // Safety: force-close any stale modals on startup
-      $('#pi-save-modal').removeClass('open').css('display', '');
-      $('#pi-modal').removeClass('open').css('display', '');
+    // Safety: force-close any stale modals on startup
+    $('#pi-save-modal, #pi-modal').removeClass('open').css('display', 'none');
 
       // Initial search
       search(true);
@@ -1593,15 +1592,17 @@
       openModal(postId);
     });
 
-    // Modal close
-    $('#pi-modal-close, #pi-modal').on('click', function(e) {
-      if (e.target === this || $(this).is('#pi-modal-close')) {
-        closeModal();
-      }
+    // Modal close — use document delegation so it works even if DOM re-renders
+    $(document).on('click', '#pi-modal-close', function(e) {
+      e.preventDefault();
+      closeModal();
+    });
+    $(document).on('click', '#pi-modal', function(e) {
+      if (e.target === this) closeModal();
     });
 
     // Prevent DETAILS modal content click from closing (scoped to #pi-modal only)
-    $('#pi-modal .pi-modal').on('click', function(e) {
+    $(document).on('click', '#pi-modal .pi-modal', function(e) {
       e.stopPropagation();
     });
 
@@ -1609,7 +1610,7 @@
     $(document).on('keydown', function(e) {
       if (e.key === 'Escape') {
         closeModal();
-        $('#pi-save-modal').removeClass('open');
+        $('#pi-save-modal').removeClass('open').css('display', 'none');
         $('#pi-saved-dropdown').removeClass('open');
         closeMyAppsPanel();
       }
@@ -1624,28 +1625,42 @@
     });
 
     // Add to workspace from modal
-    $('#pi-modal-add').on('click', function() {
+    $(document).on('click', '#pi-modal-add', function() {
       if (currentModalPostId && !$(this).hasClass('added')) {
         addToWorkspace(currentModalPostId, $(this));
       }
     });
 
-    // Save search button - show modal
-    $('#pi-save-search-btn').on('click', function() {
+    // Save search button - show modal (close details modal first)
+    $(document).on('click', '#pi-save-search-btn', function(e) {
+      e.preventDefault();
+      closeModal();
       $('#pi-save-name').val('');
-      $('#pi-save-modal').addClass('open');
+      $('#pi-save-error').hide();
+      $('#pi-save-modal').addClass('open').css('display', 'flex');
     });
 
-    // Save modal close (X button + Cancel button + backdrop click)
-    $('#pi-save-modal-close, #pi-save-cancel').on('click', function() {
-      $('#pi-save-modal').removeClass('open');
+    // Save modal close — document-level delegation for X, Cancel, and backdrop
+    $(document).on('click', '#pi-save-modal-close', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      $('#pi-save-modal').removeClass('open').css('display', 'none');
     });
-    $('#pi-save-modal').on('click', function(e) {
-      if (e.target === this) $('#pi-save-modal').removeClass('open');
+    $(document).on('click', '#pi-save-cancel', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      $('#pi-save-modal').removeClass('open').css('display', 'none');
+    });
+    $(document).on('click', '#pi-save-modal', function(e) {
+      if (e.target === e.currentTarget) {
+        $('#pi-save-modal').removeClass('open').css('display', 'none');
+      }
     });
 
     // Save confirm
-    $('#pi-save-confirm').on('click', function() {
+    $(document).on('click', '#pi-save-confirm', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
       const name = $('#pi-save-name').val().trim();
       const $err = $('#pi-save-error');
       if (!name) {
@@ -1655,12 +1670,12 @@
       }
       if ($err.length) $err.hide();
       saveSearch(name, getCurrentFilters());
-      $('#pi-save-modal').removeClass('open');
+      $('#pi-save-modal').removeClass('open').css('display', 'none');
       showToast('Search "' + name + '" saved');
     });
 
     // Clear error when typing
-    $('#pi-save-name').on('input', function() {
+    $(document).on('input', '#pi-save-name', function() {
       $('#pi-save-error').hide();
     });
 
