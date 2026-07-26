@@ -87,9 +87,15 @@ export interface QuickFilterDef {
   days?: number
 }
 
-export type SortOption = 'date_desc' | 'date_asc' | 'alpha_asc' | 'alpha_desc'
+export type SortOption =
+  | 'date_desc'
+  | 'date_asc'
+  | 'alpha_asc'
+  | 'alpha_desc'
+  | 'value_desc'
+  | 'lead_score_desc'
 
-export type ViewMode = 'grid' | 'map'
+export type ViewMode = 'grid' | 'list' | 'map'
 
 export interface PaginatedAppsResult {
   apps: PlanningApp[]

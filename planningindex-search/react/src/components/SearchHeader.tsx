@@ -3,6 +3,7 @@ import { SlidersHorizontal } from 'lucide-react'
 import SearchBar from './SearchBar'
 import QuickFilterChips from './QuickFilterChips'
 import FiltersPanel from './FiltersPanel'
+import ViewToggle from './ViewToggle'
 import { useSearchContext } from '../context/SearchContext'
 import { advancedFilterCount } from '../utils/advancedFilters'
 
@@ -18,7 +19,8 @@ export default function SearchHeader() {
         <div className="mt-3">
           <QuickFilterChips />
         </div>
-        <div className="mt-3 flex items-center justify-end">
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <ViewToggle />
           <button
             type="button"
             onClick={() => setPanelOpen((v) => !v)}

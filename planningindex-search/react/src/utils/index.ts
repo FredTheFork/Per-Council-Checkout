@@ -1,4 +1,6 @@
 export * from './format'
 export * from './leadScore'
+export * from './leadScoreHelpers'
 export * from './freshness'
 export * from './distance'
+export * from './sortApps'

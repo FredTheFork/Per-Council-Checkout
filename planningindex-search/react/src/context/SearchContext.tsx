@@ -43,11 +43,13 @@ export interface SearchState {
   page: number
   perPage: number
   loading: boolean
+  loadingMore: boolean
   loadingMap: boolean
   error: ApiError | null
   savedIds: Set<number>
   recentIds: Set<number>
   workspaceIds: Set<number>
+  selectedIds: Set<number>
   allowedAuthorities: Authority[]
   categories: Category[]
   mapApps: PlanningApp[]
@@ -72,6 +74,9 @@ export interface SearchContextValue extends SearchState {
   trackView: (id: number) => void
   addToWorkspace: (id: number) => Promise<void>
   refreshSavedState: () => Promise<void>
+  toggleSelected: (id: number) => void
+  selectAll: (ids: number[]) => void
+  clearSelection: () => void
 }
 
 const SearchContext = createContext<SearchContextValue | null>(null)
@@ -131,11 +136,13 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [page, setPage] = useState(1)
   const [perPage] = useState(DEFAULT_PER_PAGE)
   const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [loadingMap, setLoadingMap] = useState(false)
   const [error, setError] = useState<ApiError | null>(null)
   const [savedIds, setSavedIds] = useState<Set<number>>(new Set())
   const [recentIds, setRecentIds] = useState<Set<number>>(new Set())
   const [workspaceIds, setWorkspaceIds] = useState<Set<number>>(new Set())
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [allowedAuthorities, setAllowedAuthorities] = useState<Authority[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [mapApps, setMapApps] = useState<PlanningApp[]>([])
@@ -185,9 +192,9 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   }
 
   const loadMore = async (): Promise<void> => {
-    if (loading || pageRef.current >= totalPages) return
+    if (loading || loadingMore || pageRef.current >= totalPages) return
     const nextPage = pageRef.current + 1
-    setLoading(true)
+    setLoadingMore(true)
     try {
       const result = await fetchApps(filtersRef.current, nextPage, DEFAULT_PER_PAGE)
       setRawApps((prev) => {
@@ -200,7 +207,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       setError(err as ApiError)
     } finally {
-      setLoading(false)
+      setLoadingMore(false)
     }
   }
 
@@ -335,6 +342,23 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const toggleSelected = (id: number): void => {
+    setSelectedIds((s) => {
+      const next = new Set(s)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const selectAll = (ids: number[]): void => {
+    setSelectedIds(new Set(ids))
+  }
+
+  const clearSelection = (): void => {
+    setSelectedIds(new Set())
+  }
+
   const refreshSavedState = async (): Promise<void> => {
     try {
       const [saved, recent] = await Promise.all([fetchSavedApps(), fetchRecentApps()])
@@ -390,11 +414,13 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       page,
       perPage,
       loading,
+      loadingMore,
       loadingMap,
       error,
       savedIds,
       recentIds,
       workspaceIds,
+      selectedIds,
       allowedAuthorities,
       categories,
       mapApps,
@@ -416,9 +442,12 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       trackView: trackViewAction,
       addToWorkspace: addToWorkspaceAction,
       refreshSavedState,
+      toggleSelected,
+      selectAll,
+      clearSelection,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [filters, activeQuickFilter, sort, view, apps, rawApps, total, totalPages, page, perPage, loading, loadingMap, error, savedIds, recentIds, workspaceIds, allowedAuthorities, categories, mapApps],
+    [filters, activeQuickFilter, sort, view, apps, rawApps, total, totalPages, page, perPage, loading, loadingMore, loadingMap, error, savedIds, recentIds, workspaceIds, selectedIds, allowedAuthorities, categories, mapApps],
   )
 
   return <SearchContext.Provider value={value}>{children}</SearchContext.Provider>
