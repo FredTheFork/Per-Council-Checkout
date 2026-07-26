@@ -865,19 +865,13 @@
   }
 
   // -------------------------------
-  // Modal
+  // Open app details on the council site (replaces the old in-page modal)
   // -------------------------------
-  let currentModalPostId = null;
-
-  function openModal(postId, skipTrackView = false) {
-    // First try to find in allPosts (from search results)
+  function openAppDetails(postId, skipTrackView = false) {
     let post = allPosts.find(p => String(p.id) === String(postId));
-    
-    // If not found, try saved apps data
     if (!post) {
       const savedApp = userSavedAppsData.find(a => String(a.id) === String(postId));
       if (savedApp) {
-        // Convert savedApp format to post format
         post = {
           id: savedApp.id,
           title: { rendered: savedApp.title || '' },
@@ -887,8 +881,6 @@
         };
       }
     }
-    
-    // If still not found, try recent apps data
     if (!post) {
       const recentApp = userRecentAppsData.find(a => String(a.id) === String(postId));
       if (recentApp) {
@@ -901,66 +893,20 @@
         };
       }
     }
-    
     if (!post) {
       console.warn('Post not found:', postId);
       return;
     }
 
-    currentModalPostId = postId;
-    
-    // Track this view (for recently viewed - only if not already saved)
     if (!skipTrackView && !userSavedApps.has(String(postId))) {
       trackView(postId);
     }
+
     const meta = post.meta || {};
-    const addr = titleCaseAddress(meta.address || post.title?.rendered || '');
-    const councilId = meta.authority || (post.authority && post.authority[0]) || '';
-    const council = post._authority_name || (window.piCouncilsMap && window.piCouncilsMap.get(String(councilId))) || councilId || '';
-    const ref = meta.council_reference || '';
-    const date = meta.date_received || meta.date_received_raw || '';
-    const content = post.content?.rendered || '<p>No description available</p>';
     const infoUrl = meta.info_url || '#';
-    const isAdded = !!localStorage.getItem('pi-workspace-added-' + postId);
-    const estPrice = getEstPrice(meta);
-
-    $('#pi-modal-council').text(council);
-    $('#pi-modal-title').text(addr);
-    // Remove any previous price element
-    $('.pi-modal-est-price').remove();
-    if (estPrice) {
-      $('#pi-modal-title').after(`<div class="pi-modal-est-price">${escapeHtml(estPrice)}</div>`);
+    if (infoUrl && infoUrl !== '#') {
+      window.open(infoUrl, '_blank', 'noopener');
     }
-    $('#pi-modal-date').text(date);
-    $('#pi-modal-ref').text(ref);
-    $('#pi-modal-body').html(content);
-    $('#pi-modal-link').attr('href', infoUrl);
-
-    const $addBtn = $('#pi-modal-add');
-    if (isAdded) {
-      $addBtn.addClass('added').html(`
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M20 6L9 17l-5-5"></path>
-        </svg>
-        Added to Workspace
-      `);
-    } else {
-      $addBtn.removeClass('added').html(`
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 5v14M5 12h14"></path>
-        </svg>
-        Workspace
-      `);
-    }
-
-    $('#pi-modal').addClass('open').css('display', 'flex');
-    document.body.style.overflow = 'hidden';
-  }
-
-  function closeModal() {
-    $('#pi-modal').removeClass('open').css('display', 'none');
-    document.body.style.overflow = '';
-    currentModalPostId = null;
   }
 
   // -------------------------------
@@ -999,16 +945,6 @@
         </svg>
         Added
       `);
-
-      // Update modal if open
-      if (currentModalPostId === postId) {
-        $('#pi-modal-add').addClass('added').html(`
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M20 6L9 17l-5-5"></path>
-          </svg>
-          Added to Workspace
-        `);
-      }
 
       // Update map popup button if visible
       const $popupBtn = $(`.pi-popup-add[data-postid="${postId}"]`);
@@ -1433,16 +1369,6 @@
   // Event Listeners
   // -------------------------------
   $(document).ready(function() {
-    // Portal the My Apps sidebar + overlay to <body> so position:fixed
-    // anchors to the viewport, not a transformed ancestor (which would
-    // otherwise land the panel mid-page).
-    ['pi-my-apps-overlay', 'pi-my-apps-panel'].forEach(function(id) {
-      var el = document.getElementById(id);
-      if (el && el.parentNode !== document.body) {
-        document.body.appendChild(el);
-      }
-    });
-
     // Initialize
     loadGeocodeCache();
     loadAllowedAuthorities();
@@ -1471,7 +1397,7 @@
       e.preventDefault();
       e.stopPropagation();
       const postId = $(this).data('postid');
-      openModal(postId);
+      openAppDetails(postId);
       if (mapPopup) {
         mapPopup.remove();
         mapPopup = null;
@@ -1590,36 +1516,21 @@
       });
 
     // Safety: force-close any stale modals on startup
-    $('#pi-save-modal, #pi-modal').removeClass('open').css('display', 'none');
+    $('#pi-save-modal').removeClass('open').css('display', 'none');
 
       // Initial search
       search(true);
     }
 
-    // View details button
+    // View details button — opens the council page in a new tab
     $(document).on('click', '.pi-view-details', function() {
       const postId = $(this).data('postid');
-      openModal(postId);
+      openAppDetails(postId);
     });
 
-    // Modal close — use document delegation so it works even if DOM re-renders
-    $(document).on('click', '#pi-modal-close', function(e) {
-      e.preventDefault();
-      closeModal();
-    });
-    $(document).on('click', '#pi-modal', function(e) {
-      if (e.target === this) closeModal();
-    });
-
-    // Prevent DETAILS modal content click from closing (scoped to #pi-modal only)
-    $(document).on('click', '#pi-modal .pi-modal', function(e) {
-      e.stopPropagation();
-    });
-
-    // ESC to close modals and dropdowns
+    // ESC to close save modal, dropdowns, and sidebar
     $(document).on('keydown', function(e) {
       if (e.key === 'Escape') {
-        closeModal();
         $('#pi-save-modal').removeClass('open').css('display', 'none');
         $('#pi-saved-dropdown').removeClass('open');
         closeMyAppsPanel();
@@ -1634,17 +1545,9 @@
       addToWorkspace(postId, $(this));
     });
 
-    // Add to workspace from modal
-    $(document).on('click', '#pi-modal-add', function() {
-      if (currentModalPostId && !$(this).hasClass('added')) {
-        addToWorkspace(currentModalPostId, $(this));
-      }
-    });
-
-    // Save search button - show modal (close details modal first)
+    // Save search button - show modal
     $(document).on('click', '#pi-save-search-btn', function(e) {
       e.preventDefault();
-      closeModal();
       $('#pi-save-name').val('');
       $('#pi-save-error').hide();
       $('#pi-save-modal').addClass('open').css('display', 'flex');
@@ -1752,7 +1655,7 @@
       e.stopPropagation();
       const postId = $(this).data('postid');
       closeMyAppsPanel();
-      openModal(postId);
+      openAppDetails(postId);
     });
 
     // Click on app card to view details
@@ -1761,7 +1664,7 @@
       if ($(e.target).closest('.pi-my-app-actions').length) return;
       const postId = $(this).data('id');
       closeMyAppsPanel();
-      openModal(postId);
+      openAppDetails(postId);
     });
 
     // Remove app from saved

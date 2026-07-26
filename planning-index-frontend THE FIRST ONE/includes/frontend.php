@@ -28,17 +28,17 @@ add_filter('sgo_defer_render_blocking_js_exclude', function($exclude) {
 });
 
 add_action('wp_enqueue_scripts', function() {
-    wp_enqueue_style('pi-frontend-css', plugin_dir_url(__FILE__) . '../assets/frontend.css', [], '3.4');
-    
+    wp_enqueue_style('pi-frontend-css', plugin_dir_url(__FILE__) . '../assets/frontend.css', [], '3.5');
+
     // Mapbox GL CSS and JS (soft dependency — frontend.js guards against it being absent)
     wp_enqueue_style('mapbox-gl-css', 'https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css', [], '3.0.1');
     wp_enqueue_script('mapbox-gl-js', 'https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.js', [], '3.0.1', true);
-    
-    wp_enqueue_script('pi-frontend-js', plugin_dir_url(__FILE__) . '../assets/frontend.js', ['jquery'], '3.4', true);
-    
+
+    wp_enqueue_script('pi-frontend-js', plugin_dir_url(__FILE__) . '../assets/frontend.js', ['jquery'], '3.5', true);
+
     // Get Mapbox token from options (set in WP admin or wp-config.php)
     $mapbox_token = defined('PI_MAPBOX_TOKEN') ? PI_MAPBOX_TOKEN : get_option('pi_mapbox_token', '');
-    
+
     wp_localize_script('pi-frontend-js', 'PI_Settings', [
         'rest_base' => rest_url('pi/v1/apps'),
         'nonce' => wp_create_nonce('wp_rest'),
@@ -98,7 +98,7 @@ add_shortcode('planning_index_search', function($atts) {
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
         </button>
-        
+
         <div class="pi-filters" id="pi-filters-panel">
           <div class="pi-filter-group pi-filter-group-authority">
             <label>Authority</label>
@@ -161,7 +161,7 @@ add_shortcode('planning_index_search', function($atts) {
         <div class="pi-results-info">
           <span id="pi-results-count">Loading...</span>
         </div>
-        
+
         <div class="pi-toolbar-actions">
           <!-- View Toggle -->
           <div class="pi-view-toggle" id="pi-view-toggle">
@@ -263,58 +263,6 @@ add_shortcode('planning_index_search', function($atts) {
       </div>
     </div>
 
-    <!-- Details Modal -->
-    <div id="pi-modal" class="pi-modal-overlay" style="display:none;">
-      <div class="pi-modal">
-        <button class="pi-modal-close" id="pi-modal-close">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M18 6L6 18M6 6l12 12"></path>
-          </svg>
-        </button>
-        <div class="pi-modal-content">
-          <div class="pi-modal-header">
-            <span class="pi-modal-council" id="pi-modal-council"></span>
-            <h2 class="pi-modal-title" id="pi-modal-title"></h2>
-          </div>
-          <div class="pi-modal-meta">
-            <div class="pi-modal-meta-item">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="16" y1="2" x2="16" y2="6"></line>
-                <line x1="8" y1="2" x2="8" y2="6"></line>
-                <line x1="3" y1="10" x2="21" y2="10"></line>
-              </svg>
-              <span id="pi-modal-date"></span>
-            </div>
-            <div class="pi-modal-meta-item">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-              </svg>
-              <span id="pi-modal-ref"></span>
-            </div>
-          </div>
-          <div class="pi-modal-body" id="pi-modal-body"></div>
-          <div class="pi-modal-actions">
-            <button class="pi-modal-add-btn" id="pi-modal-add">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 5v14M5 12h14"></path>
-              </svg>
-              Workspace
-            </button>
-            <a class="pi-modal-link" id="pi-modal-link" href="#" target="_blank" rel="noopener">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                <polyline points="15 3 21 3 21 9"></polyline>
-                <line x1="10" y1="14" x2="21" y2="3"></line>
-              </svg>
-              View on Council Site
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Save Search Modal -->
     <div id="pi-save-modal" class="pi-modal-overlay" style="display:none;">
       <div class="pi-modal pi-modal-sm">
@@ -352,7 +300,7 @@ add_shortcode('planning_index_search', function($atts) {
           </svg>
         </button>
       </div>
-      
+
       <!-- Tabs -->
       <div class="pi-sidebar-tabs">
         <button class="pi-sidebar-tab active" data-tab="saved">
