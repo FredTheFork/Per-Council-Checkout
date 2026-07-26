@@ -171,112 +171,94 @@ Error generating stack: `+i.message+`
           [company_name] | [phone] | [email] | [website]
         </div>
       </div>
-    `)},{id:"brunel",name:"Brunel Industrial",description:"Industrial heritage style for major contractors. Bold navy and orange design with engineering-focused layout.",category:"Industrial",included:!0,price:0,accent:"warning",previewUrl:"",thumbnailUrl:"",html:it(`
-      <div style="font-family: Helvetica Neue, Helvetica, Arial, sans-serif; font-size: 10pt; line-height: 1.5; color: #222; padding: 0;">
-        <table width="100%" cellpadding="0" cellspacing="0">
+    `)},{id:"brunel",name:"Brunel Industrial",description:"Industrial heritage style for major contractors. Clean slate-blue design with a restrained, professional layout.",category:"Industrial",included:!0,price:0,accent:"brand",previewUrl:"",thumbnailUrl:"",html:it(`
+      <div style="font-family: Helvetica Neue, Helvetica, Arial, sans-serif; font-size: 10pt; line-height: 1.6; color: #2a2a2a; padding: 0;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
           <tr>
-            <td style="width: 50%; background: #2c3e50; padding: 24px 28px; vertical-align: middle;">
-              <div style="display: inline-block; color: #fff; vertical-align: middle;">
-                <div style="font-size: 20pt; font-weight: 700; letter-spacing: 1px;">[company_name]</div>
-                <div style="font-size: 9pt; margin-top: 6px; opacity: 0.9;">
-                  [company_address] | [phone]
-                </div>
+            <td width="50%" valign="top" style="padding: 24px 24px 0 0;">
+              <div style="margin-bottom: 16px;">[logo]</div>
+              <div style="font-size: 18pt; font-weight: 600; color: #3a4a5c; letter-spacing: 0.5px; line-height: 1.2;">[company_name]</div>
+              <div style="font-size: 9pt; color: #7a7a7a; line-height: 1.5; margin-top: 8px;">
+                [company_address]<br>
+                [phone] | [email]
               </div>
             </td>
-            <td style="width: 50%; vertical-align: middle; padding: 24px 28px; text-align: right; padding-top: 150px;">
-              <div style="font-size: 10pt; line-height: 1.5; color: #222;">
+            <td width="50%" valign="top" style="padding: 150px 0 0 30px; text-align: right;">
+              <div style="font-size: 10pt; line-height: 1.5; color: #2a2a2a;">
                 [address]
               </div>
             </td>
           </tr>
         </table>
-        <table width="100%" cellpadding="0" cellspacing="0">
+        <div style="border-top: 1px solid #d8d8d8; margin-bottom: 28px;"></div>
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px; font-size: 10pt;">
           <tr>
-            <td style="width: 50%; background: #e74c3c; padding: 14px 28px; vertical-align: middle;">
-              <div style="font-size: 14pt; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; color: #fff;">
-                Construction Proposal
+            <td style="width: 50%; vertical-align: top;">
+              <div style="font-size: 8pt; color: #999; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px;">Construction Proposal</div>
+              <div style="margin-bottom: 8px;">
+                <span style="font-size: 8pt; color: #999; text-transform: uppercase; letter-spacing: 1px;">Date Issued</span><br>
+                [date]
+              </div>
+              <div style="margin-bottom: 8px;">
+                <span style="font-size: 8pt; color: #999; text-transform: uppercase; letter-spacing: 1px;">Valid Until</span><br>
+                [valid_until]
+              </div>
+              <div>
+                <span style="font-size: 8pt; color: #999; text-transform: uppercase; letter-spacing: 1px;">Reference</span><br>
+                PROP-[date]
               </div>
             </td>
             <td style="width: 50%;"></td>
           </tr>
         </table>
-        <table width="100%" cellpadding="0" cellspacing="0" style="margin: 0 0 20px 0; font-size: 10pt;">
-          <tr>
-            <td style="width: 50%; vertical-align: top; padding: 15px 28px;">
-              <div style="margin-bottom: 2px;">
-                <span style="font-size: 8pt; color: #666; text-transform: uppercase; letter-spacing: 1px;">Date Issued</span><br>
-                <strong>[date]</strong>
-              </div>
-              <div style="margin-bottom: 2px; margin-top: 8px;">
-                <span style="font-size: 8pt; color: #666; text-transform: uppercase; letter-spacing: 1px;">Valid Until</span><br>
-                <strong>[valid_until]</strong>
-              </div>
-              <div style="margin-top: 8px;">
-                <span style="font-size: 8pt; color: #666; text-transform: uppercase; letter-spacing: 1px;">Reference</span><br>
-                <strong>PROP-[date]</strong>
-              </div>
-            </td>
-            <td style="width: 50%;"></td>
-          </tr>
-        </table>
-        <div style="margin-bottom: 20px; padding: 14px 20px; background: #2c3e50; color: #fff;">
-          <div style="font-size: 9pt; text-transform: uppercase; letter-spacing: 1px; opacity: 0.8;">Project Reference</div>
-          <div style="font-size: 11pt; margin-top: 4px;">[re_line]</div>
+        <div style="text-align: center; margin: 24px 0; padding: 16px 0; border-top: 1px solid #d8d8d8; border-bottom: 1px solid #d8d8d8; font-size: 11pt; color: #3a4a5c; font-style: italic;">
+          [re_line]
         </div>
-        <div style="margin-bottom: 24px;">
-          <div style="font-size: 11pt; font-weight: bold; color: #2c3e50; border-bottom: 2px solid #e74c3c; padding-bottom: 6px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px;">
+        <div style="margin-bottom: 32px;">
+          <div style="font-size: 10pt; font-weight: 600; color: #3a4a5c; text-transform: uppercase; letter-spacing: 1px; padding-bottom: 8px; border-bottom: 1px solid #d8d8d8; margin-bottom: 14px;">
             Scope of Works
           </div>
-          <p style="text-align: justify; line-height: 1.65;">[description]</p>
+          <p style="text-align: justify; line-height: 1.65; margin: 0;">[description]</p>
         </div>
-        <div style="background: #2c3e50; color: #fff; padding: 28px; margin: 24px 0; text-align: center;">
-          <div style="font-size: 10pt; letter-spacing: 2px; text-transform: uppercase; opacity: 0.9;">Total Contract Value</div>
-          <div style="font-size: 32pt; font-weight: 700; margin: 12px 0 4px; letter-spacing: 1px;">£[amount]</div>
-          <div style="font-size: 9pt; opacity: 0.8;">Exclusive of VAT</div>
+        <div style="text-align: center; margin: 36px 0; padding: 8px 0;">
+          <div style="font-size: 9pt; color: #999; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 12px;">Total Contract Value</div>
+          <div style="font-size: 30pt; font-weight: 300; color: #2a2a2a; letter-spacing: 1px; line-height: 1.1;">£[amount]</div>
+          <div style="font-size: 9pt; color: #999; margin-top: 10px;">Exclusive of VAT</div>
         </div>
-        <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 14px 18px; margin: 20px 0;">
-          <div style="font-size: 9pt; font-weight: bold; text-transform: uppercase; color: #856404; margin-bottom: 6px;">Important Notes</div>
-          <div style="font-size: 10pt; color: #856404;">[notes]</div>
+        <div style="margin: 28px 0;">
+          <div style="font-size: 8pt; color: #999; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px;">Notes</div>
+          <div style="font-size: 10pt; line-height: 1.65; color: #4a4a4a;">[notes]</div>
         </div>
-        <table width="100%" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
-          <tr>
-            <td style="width: 48%; vertical-align: top; padding-right: 12px;">
-              <div style="font-size: 10pt; font-weight: bold; color: #2c3e50; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-bottom: 10px;">
-                WARRANTY
-              </div>
-              <div style="font-size: 9.5pt; line-height: 1.55;">[warranty]</div>
-            </td>
-            <td style="width: 4%;"></td>
-            <td style="width: 48%; vertical-align: top; padding-left: 12px;">
-              <div style="font-size: 10pt; font-weight: bold; color: #2c3e50; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-bottom: 10px;">
-                PAYMENT TERMS
-              </div>
-              <div style="font-size: 9.5pt; line-height: 1.55;">[terms]</div>
-            </td>
-          </tr>
-        </table>
-        <div style="margin-top: 32px; border-top: 2px solid #2c3e50; padding-top: 20px;">
+        <div style="margin: 24px 0; padding-top: 20px; border-top: 1px solid #d8d8d8;">
+          <div style="font-size: 8pt; color: #999; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px;">Warranty</div>
+          <div style="font-size: 10pt; line-height: 1.65; color: #4a4a4a;">[warranty]</div>
+        </div>
+        <div style="margin: 24px 0; padding-top: 20px; border-top: 1px solid #d8d8d8;">
+          <div style="font-size: 8pt; color: #999; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px;">Payment Terms</div>
+          <div style="font-size: 10pt; line-height: 1.65; color: #4a4a4a;">[terms]</div>
+        </div>
+        <div style="margin-top: 40px; padding-top: 24px; border-top: 1px solid #d8d8d8;">
           <table width="100%" cellpadding="0" cellspacing="0">
             <tr>
               <td style="width: 48%; vertical-align: bottom;">
-                <div style="margin-bottom: 20px;">[signature]</div>
-                <div style="border-top: 1px solid #222; padding-top: 6px; font-size: 9pt;">
-                  <strong>[company_name]</strong><br>
-                  Authorised Signatory
+                <div style="margin-bottom: 20px; min-height: 50px;">[signature]</div>
+                <div style="border-top: 1px solid #2a2a2a; padding-top: 6px; font-size: 9pt; color: #4a4a4a;">
+                  [company_name]<br>
+                  <span style="color: #999;">Authorised Signatory</span>
                 </div>
               </td>
               <td style="width: 4%;"></td>
               <td style="width: 48%; vertical-align: bottom;">
-                <div style="height: 60px; border-bottom: 1px solid #222;"></div>
-                <div style="padding-top: 6px; font-size: 9pt;">
+                <div style="height: 50px; border-bottom: 1px solid #2a2a2a;"></div>
+                <div style="padding-top: 6px; font-size: 9pt; color: #999;">
                   Client Signature & Date
                 </div>
               </td>
             </tr>
           </table>
         </div>
-        <div style="margin-top: 30px; padding: 16px 0; border-top: 3px solid #e74c3c; text-align: center; font-size: 8.5pt; color: #666;">
-          <strong>[company_name]</strong> | [phone] | [email] | [website]
+        <div style="margin-top: 36px; padding-top: 14px; border-top: 1px solid #d8d8d8; text-align: center; font-size: 8.5pt; color: #999;">
+          [company_name] | [phone] | [email] | [website]
         </div>
       </div>
     `)},{id:"mayfair",name:"Mayfair Premium",description:"Luxury and high-end residential. Understated elegance with gold accents for premium projects.",category:"Luxury",included:!0,price:0,accent:"accent",previewUrl:"",thumbnailUrl:"",html:it(`
