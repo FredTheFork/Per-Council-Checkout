@@ -4,6 +4,7 @@ import type { PlanningIndexSearchConfig } from './types'
 import SearchHeader from './components/SearchHeader'
 import ResultsArea from './components/ResultsArea'
 import AppDetailPanel from './components/AppDetailPanel'
+import MyAppsSidebar from './components/MyAppsSidebar'
 
 export default function App() {
   const [config, setConfig] = useState<PlanningIndexSearchConfig | null>(null)
@@ -66,6 +67,9 @@ export default function App() {
 
       {/* Detail panel overlay */}
       <AppDetailPanel />
+
+      {/* My Apps sidebar overlay */}
+      <MyAppsSidebar />
     </div>
   )
 }

@@ -59,6 +59,13 @@ export interface SearchState {
 
 export interface SearchContextValue extends SearchState {
   selectedAppId: number | null
+  isMyAppsOpen: boolean
+  savedApps: UserApp[]
+  recentApps: UserApp[]
+  loadingMyApps: boolean
+  openMyApps: () => void
+  closeMyApps: () => void
+  refreshMyApps: () => Promise<void>
   runSearch: () => Promise<void>
   loadMore: () => Promise<void>
   setFilters: (partial: Partial<SearchFilters>) => void
@@ -155,6 +162,10 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [categories, setCategories] = useState<Category[]>([])
   const [mapApps, setMapApps] = useState<PlanningApp[]>([])
   const [selectedAppId, setSelectedAppId] = useState<number | null>(null)
+  const [isMyAppsOpen, setIsMyAppsOpen] = useState(false)
+  const [savedApps, setSavedApps] = useState<UserApp[]>([])
+  const [recentApps, setRecentApps] = useState<UserApp[]>([])
+  const [loadingMyApps, setLoadingMyApps] = useState(false)
 
   const abortRef = useRef<AbortController | null>(null)
   const mapAbortRef = useRef<AbortController | null>(null)
@@ -377,6 +388,30 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     setSelectedAppId(null)
   }
 
+  const refreshMyApps = async (): Promise<void> => {
+    setLoadingMyApps(true)
+    try {
+      const [saved, recent] = await Promise.all([fetchSavedApps(), fetchRecentApps()])
+      setSavedApps(saved)
+      setRecentApps(recent)
+      setSavedIds(new Set(saved.map((a) => a.id)))
+      setRecentIds(new Set(recent.map((a) => a.id)))
+    } catch {
+      // best-effort sync
+    } finally {
+      setLoadingMyApps(false)
+    }
+  }
+
+  const openMyApps = (): void => {
+    setIsMyAppsOpen(true)
+    void refreshMyApps()
+  }
+
+  const closeMyApps = (): void => {
+    setIsMyAppsOpen(false)
+  }
+
   const refreshSavedState = async (): Promise<void> => {
     try {
       const [saved, recent] = await Promise.all([fetchSavedApps(), fetchRecentApps()])
@@ -443,6 +478,13 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       categories,
       mapApps,
       selectedAppId,
+      isMyAppsOpen,
+      savedApps,
+      recentApps,
+      loadingMyApps,
+      openMyApps,
+      closeMyApps,
+      refreshMyApps,
       runSearch,
       loadMore,
       setFilters,
@@ -471,7 +513,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       fetchRecentApps,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [filters, activeQuickFilter, sort, view, apps, rawApps, total, totalPages, page, perPage, loading, loadingMore, loadingMap, error, savedIds, recentIds, workspaceIds, selectedIds, allowedAuthorities, categories, mapApps, selectedAppId],
+    [filters, activeQuickFilter, sort, view, apps, rawApps, total, totalPages, page, perPage, loading, loadingMore, loadingMap, error, savedIds, recentIds, workspaceIds, selectedIds, allowedAuthorities, categories, mapApps, selectedAppId, isMyAppsOpen, savedApps, recentApps, loadingMyApps],
   )
 
   return <SearchContext.Provider value={value}>{children}</SearchContext.Provider>
