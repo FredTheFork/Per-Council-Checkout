@@ -1433,6 +1433,16 @@
   // Event Listeners
   // -------------------------------
   $(document).ready(function() {
+    // Portal the My Apps sidebar + overlay to <body> so position:fixed
+    // anchors to the viewport, not a transformed ancestor (which would
+    // otherwise land the panel mid-page).
+    ['pi-my-apps-overlay', 'pi-my-apps-panel'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el && el.parentNode !== document.body) {
+        document.body.appendChild(el);
+      }
+    });
+
     // Initialize
     loadGeocodeCache();
     loadAllowedAuthorities();
