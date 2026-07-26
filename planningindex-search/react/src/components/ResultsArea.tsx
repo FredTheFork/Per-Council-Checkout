@@ -1,17 +1,16 @@
-import { useMemo, useCallback, useEffect, useRef } from 'react'
-import { Loader as Loader2, X, Download } from 'lucide-react'
+import { useMemo, useCallback } from 'react'
+import { Loader as Loader2 } from 'lucide-react'
 import { useSearchContext } from '../context/SearchContext'
 import { sortApps } from '../utils/sortApps'
-import { advancedFilterCount } from '../utils/advancedFilters'
-import { exportAppsToCsv } from '../utils/csvExport'
-import { useToast } from './ToastProvider'
+import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion'
+import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
 import type { PlanningApp } from '../types'
 import AppCard from './AppCard'
 import AppListRow from './AppListRow'
 import SkeletonCard from './SkeletonCard'
 import SkeletonRow from './SkeletonRow'
 import EmptyState from './EmptyState'
-import SortDropdown from './SortDropdown'
+import ResultsToolbar from './ResultsToolbar'
 import MapView from './MapView'
 
 const SKELETON_GRID_COUNT = 6
@@ -33,8 +32,6 @@ export default function ResultsArea() {
     savedIds,
     workspaceIds,
     selectedIds,
-    selectAll,
-    clearSelection,
     runSearch,
     loadMore,
     saveApp,
@@ -42,11 +39,11 @@ export default function ResultsArea() {
     addToWorkspace,
     openDetailPanel,
     toggleSelected,
-    setFilters,
-    setQuickFilter,
-    toggleHighValue,
-    toggleConstruction,
+    paginationMode,
   } = useSearchContext()
+
+  const prefersReducedMotion = usePrefersReducedMotion()
+  const effectivePaginationMode = prefersReducedMotion ? 'button' : paginationMode
 
   const sortedApps = useMemo(
     () => sortApps(apps, sort, filters),
@@ -72,8 +69,14 @@ export default function ResultsArea() {
 
   const hasMore = page < totalPages
   const showingAll = !hasMore && apps.length > 0
-  const hasActiveFilters =
-    advancedFilterCount(filters) > 0 || !!filters.search || !!activeQuickFilter
+
+  // Infinite scroll sentinel
+  const sentinelRef = useInfiniteScroll({
+    enabled: effectivePaginationMode === 'infinite' && view !== 'map',
+    hasMore,
+    loading: loadingMore,
+    onLoadMore: loadMore,
+  })
 
   // Error state
   if (error && apps.length === 0 && !loading) {
@@ -92,92 +95,27 @@ export default function ResultsArea() {
 
   // Empty state
   if (!loading && apps.length === 0 && !error) {
-    return <EmptyState />
+    return (
+      <div className="space-y-4">
+        <ResultsToolbar apps={sortedApps} loading={loading} />
+        <EmptyState />
+      </div>
+    )
   }
 
   // Map view
   if (view === 'map') {
-    return <MapView />
+    return (
+      <div className="space-y-4">
+        <ResultsToolbar apps={[]} loading={loading} />
+        <MapView />
+      </div>
+    )
   }
 
   return (
     <div className="space-y-4">
-      {/* Results toolbar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-sm text-slate-600">
-            {showingAll ? (
-              <>
-                Showing all{' '}
-                <span className="font-semibold text-slate-900">
-                  {total.toLocaleString('en-GB')}
-                </span>{' '}
-                application{total !== 1 ? 's' : ''}
-              </>
-            ) : (
-              <>
-                Showing{' '}
-                <span className="font-semibold text-slate-900">
-                  {apps.length.toLocaleString('en-GB')}
-                </span>{' '}
-                of{' '}
-                <span className="font-semibold text-slate-900">
-                  {total.toLocaleString('en-GB')}
-                </span>{' '}
-                application{total !== 1 ? 's' : ''}
-              </>
-            )}
-          </p>
-
-          {/* Active filter chips */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            {filters.search && (
-              <FilterChip
-                label={`"${filters.search}"`}
-                onRemove={() => {
-                  setFilters({ search: undefined })
-                  runSearch()
-                }}
-              />
-            )}
-            {activeQuickFilter && (
-              <FilterChip
-                label={activeQuickFilter.replace('_', ' ')}
-                onRemove={() => {
-                  setQuickFilter(null)
-                  runSearch()
-                }}
-              />
-            )}
-            {filters.highValueOnly && (
-              <FilterChip
-                label="High Value"
-                color="success"
-                onRemove={() => {
-                  toggleHighValue()
-                  runSearch()
-                }}
-              />
-            )}
-            {filters.constructionOnly && (
-              <FilterChip
-                label="Construction"
-                color="brand"
-                onRemove={() => {
-                  toggleConstruction()
-                  runSearch()
-                }}
-              />
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <SelectAllCheckbox apps={sortedApps} />
-          <ExportButton apps={sortedApps} selectedCount={selectedIds.size} />
-          <SortDropdown />
-        </div>
-      </div>
+      <ResultsToolbar apps={sortedApps} loading={loading} />
 
       {/* Grid or List */}
       {loading && apps.length === 0 ? (
@@ -240,153 +178,50 @@ export default function ResultsArea() {
         </div>
       )}
 
-      {/* Load more / end of results */}
+      {/* Loading more indicator / Load more button / End of results */}
       {!loading && apps.length > 0 && (
-        <div className="flex flex-col items-center gap-2 py-4">
-          {hasMore ? (
-            <button
-              type="button"
-              onClick={loadMore}
-              disabled={loadingMore}
-              className="btn-primary"
+        <>
+          {loadingMore && effectivePaginationMode === 'infinite' && (
+            <div
+              className="flex items-center justify-center gap-2 py-4 text-sm text-slate-500"
+              role="status"
+              aria-live="polite"
             >
-              {loadingMore ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading more…
-                </>
-              ) : (
-                'Load more'
-              )}
-            </button>
-          ) : (
-            <p className="text-sm text-slate-400">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading more applications…
+            </div>
+          )}
+
+          {hasMore && effectivePaginationMode === 'button' ? (
+            <div className="flex flex-col items-center gap-2 py-4">
+              <button
+                type="button"
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="btn-primary"
+              >
+                {loadingMore ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading more…
+                  </>
+                ) : (
+                  'Load more'
+                )}
+              </button>
+            </div>
+          ) : showingAll ? (
+            <p className="py-4 text-center text-sm text-slate-400">
               You've reached the end — all {total.toLocaleString('en-GB')} applications loaded
             </p>
+          ) : null}
+
+          {/* Infinite scroll sentinel */}
+          {effectivePaginationMode === 'infinite' && hasMore && !loadingMore && (
+            <div ref={sentinelRef} aria-hidden="true" className="h-1 w-full" />
           )}
-        </div>
+        </>
       )}
     </div>
-  )
-}
-
-function FilterChip({
-  label,
-  color = 'slate',
-  onRemove,
-}: {
-  label: string
-  color?: 'slate' | 'success' | 'brand'
-  onRemove: () => void
-}) {
-  const colorClasses = {
-    slate: 'bg-slate-100 text-slate-700 hover:bg-slate-200',
-    success: 'bg-success-100 text-success-700 hover:bg-success-200',
-    brand: 'bg-brand-100 text-brand-700 hover:bg-brand-200',
-  }
-
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium capitalize transition-colors ${colorClasses[color]}`}
-    >
-      {label}
-      <button
-        type="button"
-        onClick={onRemove}
-        className="ml-0.5 inline-flex items-center rounded-full p-0.5 hover:bg-black/10"
-        aria-label={`Remove ${label} filter`}
-      >
-        <X className="h-3 w-3" />
-      </button>
-    </span>
-  )
-}
-
-function SelectAllCheckbox({ apps }: { apps: PlanningApp[] }) {
-  const { selectedIds, selectAll, clearSelection } = useSearchContext()
-  const checkboxRef = useRef<HTMLInputElement>(null)
-
-  const allSelected = apps.length > 0 && apps.every((a) => selectedIds.has(a.id))
-  const someSelected = apps.some((a) => selectedIds.has(a.id)) && !allSelected
-
-  useEffect(() => {
-    if (checkboxRef.current) {
-      checkboxRef.current.indeterminate = someSelected
-    }
-  }, [someSelected])
-
-  const label = allSelected
-    ? `All selected (${apps.length})`
-    : someSelected
-      ? `${selectedIds.size} of ${apps.length} selected`
-      : 'Select all'
-
-  return (
-    <label
-      className="inline-flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-600 transition-colors hover:bg-slate-100"
-      title="Selects all loaded applications"
-    >
-      <input
-        ref={checkboxRef}
-        type="checkbox"
-        checked={allSelected}
-        onChange={() => {
-          if (allSelected) {
-            clearSelection()
-          } else {
-            selectAll(apps.map((a) => a.id))
-          }
-        }}
-        className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-        aria-label={label}
-      />
-      <span className="hidden whitespace-nowrap md:inline">{label}</span>
-    </label>
-  )
-}
-
-function ExportButton({
-  apps,
-  selectedCount,
-}: {
-  apps: PlanningApp[]
-  selectedCount: number
-}) {
-  const { selectedIds } = useSearchContext()
-  const { showToast } = useToast()
-  const [exporting, setExporting] = useState(false)
-
-  const handleExport = () => {
-    const toExport = selectedCount > 0
-      ? apps.filter((a) => selectedIds.has(a.id))
-      : apps
-    if (toExport.length === 0) {
-      showToast('No applications to export', { type: 'info' })
-      return
-    }
-    setExporting(true)
-    try {
-      exportAppsToCsv(toExport)
-      showToast(`Exported ${toExport.length} application${toExport.length !== 1 ? 's' : ''} to CSV`)
-    } catch {
-      showToast('Could not export to CSV', { type: 'error' })
-    } finally {
-      setExporting(false)
-    }
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={handleExport}
-      disabled={exporting || apps.length === 0}
-      aria-label={`Export ${selectedCount > 0 ? selectedCount : apps.length} applications to CSV`}
-      className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-sm font-medium text-slate-700 ring-1 ring-inset ring-slate-300 transition-colors hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-    >
-      <Download className="h-4 w-4" />
-      <span className="hidden sm:inline whitespace-nowrap">
-        {selectedCount > 0 ? `Export (${selectedCount})` : 'Export CSV'}
-      </span>
-    </button>
   )
 }

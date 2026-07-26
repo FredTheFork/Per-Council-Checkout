@@ -37,7 +37,7 @@ export function buildAppsCsv(apps: PlanningApp[]): string {
     const values = getAppRow(app).map(escapeCsv)
     rows.push(values.join(','))
   }
-  return '\r\n'.join(rows)
+  return rows.join('\r\n')
 }
 
 export function exportAppsToCsv(apps: PlanningApp[], filename?: string): void {

@@ -97,6 +97,8 @@ export type SortOption =
 
 export type ViewMode = 'grid' | 'list' | 'map'
 
+export type PaginationMode = 'button' | 'infinite'
+
 export interface PaginatedAppsResult {
   apps: PlanningApp[]
   total: number

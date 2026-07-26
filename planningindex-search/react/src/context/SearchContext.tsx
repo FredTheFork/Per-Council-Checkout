@@ -29,6 +29,10 @@ import {
   MAX_SAVED_SEARCHES,
 } from '../utils/savedSearchStorage'
 import {
+  loadPreferences,
+  persistPreference,
+} from '../utils/preferencesStorage'
+import {
   loadPipeline,
   setPipelineEntry,
   setPipelineNotes,
@@ -42,6 +46,7 @@ import type {
   Category,
   LeadStatus,
   LeadPipelineEntry,
+  PaginationMode,
   PipelineMap,
   PlanningApp,
   QuickFilterId,
@@ -58,6 +63,7 @@ export interface SearchState {
   activeQuickFilter: QuickFilterId | null
   sort: SortOption
   view: ViewMode
+  paginationMode: PaginationMode
   apps: PlanningApp[]
   rawApps: PlanningApp[]
   total: number
@@ -117,6 +123,7 @@ export interface SearchContextValue extends SearchState {
   setValueRange: (min: number | undefined, max: number | undefined) => void
   setSort: (sort: SortOption) => void
   switchView: (view: ViewMode) => Promise<void>
+  setPaginationMode: (mode: PaginationMode) => void
   saveApp: (id: number) => Promise<void>
   unsaveApp: (id: number) => Promise<void>
   trackView: (id: number) => void
@@ -137,6 +144,7 @@ const SearchContext = createContext<SearchContextValue | null>(null)
 const DEFAULT_FILTERS: SearchFilters = {}
 const DEFAULT_SORT: SortOption = 'date_desc'
 const DEFAULT_VIEW: ViewMode = 'grid'
+const DEFAULT_PAGINATION: PaginationMode = 'button'
 const DEFAULT_PER_PAGE = 40
 
 function applyClientFilters(
@@ -182,6 +190,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [activeQuickFilter, setActiveQuickFilter] = useState<QuickFilterId | null>(null)
   const [sort, setSortState] = useState<SortOption>(DEFAULT_SORT)
   const [view, setView] = useState<ViewMode>(DEFAULT_VIEW)
+  const [paginationMode, setPaginationModeState] = useState<PaginationMode>(DEFAULT_PAGINATION)
   const [apps, setApps] = useState<PlanningApp[]>([])
   const [rawApps, setRawApps] = useState<PlanningApp[]>([])
   const [total, setTotal] = useState(0)
@@ -342,12 +351,14 @@ export function SearchProvider({ children }: { children: ReactNode }) {
 
   const setSort = (newSort: SortOption): void => {
     setSortState(newSort)
+    persistPreference(config.getUserId(), 'sort', newSort)
   }
 
   const switchView = async (newView: ViewMode): Promise<void> => {
     if (newView === viewRef.current) return
     setView(newView)
     viewRef.current = newView
+    persistPreference(config.getUserId(), 'view', newView)
 
     if (newView === 'map') {
       const filterKey = JSON.stringify(filtersRef.current)
@@ -369,6 +380,11 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         if (!controller.signal.aborted) setLoadingMap(false)
       }
     }
+  }
+
+  const setPaginationMode = (mode: PaginationMode): void => {
+    setPaginationModeState(mode)
+    persistPreference(config.getUserId(), 'paginationMode', mode)
   }
 
   const saveAppAction = async (id: number): Promise<void> => {
@@ -663,6 +679,12 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       const storedPipeline = loadPipeline(userId)
       setPipeline(storedPipeline)
       pipelineRef.current = storedPipeline
+      const prefs = loadPreferences(userId)
+      setSortState(prefs.sort)
+      sortRef.current = prefs.sort
+      setView(prefs.view)
+      viewRef.current = prefs.view
+      setPaginationModeState(prefs.paginationMode)
     }
 
     void (async () => {
@@ -692,6 +714,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       activeQuickFilter,
       sort,
       view,
+      paginationMode,
       apps,
       rawApps,
       total,
@@ -748,6 +771,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       setValueRange,
       setSort,
       switchView,
+      setPaginationMode,
       saveApp: saveAppAction,
       unsaveApp: unsaveAppAction,
       trackView: trackViewAction,
@@ -763,7 +787,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       fetchRecentApps,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [filters, activeQuickFilter, sort, view, apps, rawApps, total, totalPages, page, perPage, loading, loadingMore, loadingMap, error, savedIds, recentIds, workspaceIds, selectedIds, allowedAuthorities, categories, mapApps, pipeline, workspaceApps, loadingWorkspaceApps, myAppsInitialTab, selectedAppId, isMyAppsOpen, savedApps, recentApps, loadingMyApps, savedSearches, saveSearchModalOpen, loadingSavedSearchCounts],
+    [filters, activeQuickFilter, sort, view, paginationMode, apps, rawApps, total, totalPages, page, perPage, loading, loadingMore, loadingMap, error, savedIds, recentIds, workspaceIds, selectedIds, allowedAuthorities, categories, mapApps, pipeline, workspaceApps, loadingWorkspaceApps, myAppsInitialTab, selectedAppId, isMyAppsOpen, savedApps, recentApps, loadingMyApps, savedSearches, saveSearchModalOpen, loadingSavedSearchCounts],
   )
 
   return <SearchContext.Provider value={value}>{children}</SearchContext.Provider>

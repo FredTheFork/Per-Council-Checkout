@@ -1,10 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { SlidersHorizontal, BookmarkCheck } from 'lucide-react'
 import SearchBar from './SearchBar'
 import QuickFilterChips from './QuickFilterChips'
 import FiltersPanel from './FiltersPanel'
-import ViewToggle from './ViewToggle'
-import SavedSearchesDropdown from './SavedSearchesDropdown'
 import { useSearchContext } from '../context/SearchContext'
 import { advancedFilterCount } from '../utils/advancedFilters'
 import { config } from '../config'
@@ -12,23 +10,39 @@ import { config } from '../config'
 export default function SearchHeader() {
   const { filters, savedApps, isMyAppsOpen, openMyApps } = useSearchContext()
   const [panelOpen, setPanelOpen] = useState(false)
+  const headerRef = useRef<HTMLDivElement>(null)
   const count = advancedFilterCount(filters)
   const savedCount = savedApps.length
 
+  useEffect(() => {
+    const header = headerRef.current
+    if (!header) return
+    const update = () => {
+      const h = header.offsetHeight
+      document.documentElement.style.setProperty('--pi-header-height', `${h}px`)
+    }
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(header)
+    return () => ro.disconnect()
+  }, [])
+
   return (
-    <div className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 shadow-sm backdrop-blur-md">
+    <div
+      ref={headerRef}
+      className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 shadow-sm backdrop-blur-md"
+    >
       <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
         <SearchBar />
         <div className="mt-3">
           <QuickFilterChips />
         </div>
-        <div className="mt-3 flex items-center justify-between gap-2">
-          <ViewToggle />
+        <div className="mt-3 flex items-center justify-end gap-2">
           <div className="flex items-center gap-2">
             {config.isLoggedIn() && (
               <button
                 type="button"
-                onClick={openMyApps}
+                onClick={() => openMyApps()}
                 aria-expanded={isMyAppsOpen}
                 aria-label={`Open My Apps, ${savedCount} saved`}
                 className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
@@ -46,7 +60,6 @@ export default function SearchHeader() {
                 )}
               </button>
             )}
-            {config.isLoggedIn() && <SavedSearchesDropdown />}
             <button
               type="button"
               onClick={() => setPanelOpen((v) => !v)}
