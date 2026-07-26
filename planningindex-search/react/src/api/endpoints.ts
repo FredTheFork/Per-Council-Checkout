@@ -164,6 +164,31 @@ export async function addToWorkspace(
   }
 }
 
+export async function removeFromWorkspace(
+  id: number,
+  signal?: AbortSignal,
+): Promise<{ success: boolean; removed: boolean }> {
+  try {
+    const { data } = await apiPost<{ success: boolean; removed: boolean }>(
+      '/workspace/remove',
+      { post_id: id },
+      signal,
+    )
+    return data
+  } catch {
+    return { success: false, removed: false }
+  }
+}
+
+export async function fetchWorkspaceApps(signal?: AbortSignal): Promise<UserApp[]> {
+  try {
+    const { data } = await apiGet<SavedAppsResponse>('/workspace/list', undefined, signal)
+    return (data.apps ?? []).map((raw) => mapUserApp(raw as unknown as RawUserApp, false))
+  } catch {
+    return []
+  }
+}
+
 export async function fetchAppById(
   id: number,
   signal?: AbortSignal,

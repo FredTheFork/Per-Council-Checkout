@@ -1,8 +1,10 @@
-import { useMemo, useCallback } from 'react'
-import { Loader as Loader2, X } from 'lucide-react'
+import { useMemo, useCallback, useEffect, useRef } from 'react'
+import { Loader as Loader2, X, Download } from 'lucide-react'
 import { useSearchContext } from '../context/SearchContext'
 import { sortApps } from '../utils/sortApps'
 import { advancedFilterCount } from '../utils/advancedFilters'
+import { exportAppsToCsv } from '../utils/csvExport'
+import { useToast } from './ToastProvider'
 import type { PlanningApp } from '../types'
 import AppCard from './AppCard'
 import AppListRow from './AppListRow'
@@ -31,6 +33,8 @@ export default function ResultsArea() {
     savedIds,
     workspaceIds,
     selectedIds,
+    selectAll,
+    clearSelection,
     runSearch,
     loadMore,
     saveApp,
@@ -168,7 +172,11 @@ export default function ResultsArea() {
           </div>
         </div>
 
-        <SortDropdown />
+        <div className="flex items-center gap-2">
+          <SelectAllCheckbox apps={sortedApps} />
+          <ExportButton apps={sortedApps} selectedCount={selectedIds.size} />
+          <SortDropdown />
+        </div>
       </div>
 
       {/* Grid or List */}
@@ -291,5 +299,94 @@ function FilterChip({
         <X className="h-3 w-3" />
       </button>
     </span>
+  )
+}
+
+function SelectAllCheckbox({ apps }: { apps: PlanningApp[] }) {
+  const { selectedIds, selectAll, clearSelection } = useSearchContext()
+  const checkboxRef = useRef<HTMLInputElement>(null)
+
+  const allSelected = apps.length > 0 && apps.every((a) => selectedIds.has(a.id))
+  const someSelected = apps.some((a) => selectedIds.has(a.id)) && !allSelected
+
+  useEffect(() => {
+    if (checkboxRef.current) {
+      checkboxRef.current.indeterminate = someSelected
+    }
+  }, [someSelected])
+
+  const label = allSelected
+    ? `All selected (${apps.length})`
+    : someSelected
+      ? `${selectedIds.size} of ${apps.length} selected`
+      : 'Select all'
+
+  return (
+    <label
+      className="inline-flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-600 transition-colors hover:bg-slate-100"
+      title="Selects all loaded applications"
+    >
+      <input
+        ref={checkboxRef}
+        type="checkbox"
+        checked={allSelected}
+        onChange={() => {
+          if (allSelected) {
+            clearSelection()
+          } else {
+            selectAll(apps.map((a) => a.id))
+          }
+        }}
+        className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+        aria-label={label}
+      />
+      <span className="hidden whitespace-nowrap md:inline">{label}</span>
+    </label>
+  )
+}
+
+function ExportButton({
+  apps,
+  selectedCount,
+}: {
+  apps: PlanningApp[]
+  selectedCount: number
+}) {
+  const { selectedIds } = useSearchContext()
+  const { showToast } = useToast()
+  const [exporting, setExporting] = useState(false)
+
+  const handleExport = () => {
+    const toExport = selectedCount > 0
+      ? apps.filter((a) => selectedIds.has(a.id))
+      : apps
+    if (toExport.length === 0) {
+      showToast('No applications to export', { type: 'info' })
+      return
+    }
+    setExporting(true)
+    try {
+      exportAppsToCsv(toExport)
+      showToast(`Exported ${toExport.length} application${toExport.length !== 1 ? 's' : ''} to CSV`)
+    } catch {
+      showToast('Could not export to CSV', { type: 'error' })
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleExport}
+      disabled={exporting || apps.length === 0}
+      aria-label={`Export ${selectedCount > 0 ? selectedCount : apps.length} applications to CSV`}
+      className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-sm font-medium text-slate-700 ring-1 ring-inset ring-slate-300 transition-colors hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      <Download className="h-4 w-4" />
+      <span className="hidden sm:inline whitespace-nowrap">
+        {selectedCount > 0 ? `Export (${selectedCount})` : 'Export CSV'}
+      </span>
+    </button>
   )
 }

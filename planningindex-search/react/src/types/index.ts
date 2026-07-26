@@ -111,6 +111,17 @@ export interface WorkspaceAddResult {
   alreadyAdded?: boolean
 }
 
+export type LeadStatus = 'possible' | 'contacted' | 'quoted' | 'won' | 'lost'
+
+export interface LeadPipelineEntry {
+  appId: number
+  status: LeadStatus
+  notes: string
+  updatedAt: string
+}
+
+export type PipelineMap = Record<number, LeadPipelineEntry>
+
 export interface CheckSavedResult {
   saved: Record<number, boolean>
 }

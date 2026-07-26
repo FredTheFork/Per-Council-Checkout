@@ -15,22 +15,34 @@ import {
   fetchRecentApps,
   fetchSavedApps,
   fetchSearchCount,
+  fetchWorkspaceApps,
   checkSaved,
   saveApp,
   unsaveApp,
   trackView,
   addToWorkspace,
+  removeFromWorkspace,
 } from '../api'
 import {
   loadSavedSearches,
   persistSavedSearches,
   MAX_SAVED_SEARCHES,
 } from '../utils/savedSearchStorage'
+import {
+  loadPipeline,
+  setPipelineEntry,
+  setPipelineNotes,
+  ensurePipelineEntry,
+  removePipelineEntry,
+} from '../utils/workspaceStorage'
 import { isHighValue, isConstructionJob } from '../utils'
 import type {
   ApiError,
   Authority,
   Category,
+  LeadStatus,
+  LeadPipelineEntry,
+  PipelineMap,
   PlanningApp,
   QuickFilterId,
   SavedSearch,
@@ -63,6 +75,10 @@ export interface SearchState {
   allowedAuthorities: Authority[]
   categories: Category[]
   mapApps: PlanningApp[]
+  pipeline: PipelineMap
+  workspaceApps: UserApp[]
+  loadingWorkspaceApps: boolean
+  myAppsInitialTab: 'saved' | 'recent' | 'workspace'
 }
 
 export interface SearchContextValue extends SearchState {
@@ -80,9 +96,14 @@ export interface SearchContextValue extends SearchState {
   deleteSavedSearch: (id: number) => void
   applySavedSearch: (search: SavedSearch) => void
   refreshSavedSearchCounts: () => Promise<void>
-  openMyApps: () => void
+  openMyApps: (initialTab?: 'saved' | 'recent' | 'workspace') => void
   closeMyApps: () => void
   refreshMyApps: () => Promise<void>
+  refreshWorkspaceApps: () => Promise<void>
+  removeFromWorkspace: (id: number) => Promise<void>
+  setLeadStatus: (appId: number, status: LeadStatus) => void
+  setLeadNotes: (appId: number, notes: string) => void
+  getPipelineEntry: (appId: number) => LeadPipelineEntry | undefined
   runSearch: () => Promise<void>
   loadMore: () => Promise<void>
   setFilters: (partial: Partial<SearchFilters>) => void
@@ -186,6 +207,13 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([])
   const [saveSearchModalOpen, setSaveSearchModalOpen] = useState(false)
   const [loadingSavedSearchCounts, setLoadingSavedSearchCounts] = useState(false)
+  const [pipeline, setPipeline] = useState<PipelineMap>({})
+  const [workspaceApps, setWorkspaceApps] = useState<UserApp[]>([])
+  const [loadingWorkspaceApps, setLoadingWorkspaceApps] = useState(false)
+  const [myAppsInitialTab, setMyAppsInitialTab] = useState<'saved' | 'recent' | 'workspace'>('saved')
+
+  const pipelineRef = useRef<PipelineMap>(pipeline)
+  pipelineRef.current = pipeline
 
   const savedSearchesRef = useRef<SavedSearch[]>(savedSearches)
   savedSearchesRef.current = savedSearches
@@ -379,9 +407,67 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       const result = await addToWorkspace(id)
       if (!result.success && !result.added) {
         setWorkspaceIds(prev)
+      } else {
+        const userId = config.getUserId()
+        const next = ensurePipelineEntry(userId, pipelineRef.current, id)
+        setPipeline(next)
+        pipelineRef.current = next
       }
     } catch {
       setWorkspaceIds(prev)
+    }
+  }
+
+  const removeFromWorkspaceAction = async (id: number): Promise<void> => {
+    const prev = new Set(workspaceIds)
+    setWorkspaceIds((s) => {
+      const next = new Set(s)
+      next.delete(id)
+      return next
+    })
+    setWorkspaceApps((prevApps) => prevApps.filter((a) => a.id !== id))
+    try {
+      await removeFromWorkspace(id)
+    } catch {
+      setWorkspaceIds(prev)
+    }
+  }
+
+  const setLeadStatusAction = (appId: number, status: LeadStatus): void => {
+    const userId = config.getUserId()
+    const next = setPipelineEntry(userId, pipelineRef.current, appId, status)
+    setPipeline(next)
+    pipelineRef.current = next
+  }
+
+  const setLeadNotesAction = (appId: number, notes: string): void => {
+    const userId = config.getUserId()
+    const next = setPipelineNotes(userId, pipelineRef.current, appId, notes)
+    setPipeline(next)
+    pipelineRef.current = next
+  }
+
+  const getPipelineEntryAction = (appId: number): LeadPipelineEntry | undefined => {
+    return pipelineRef.current[appId]
+  }
+
+  const refreshWorkspaceApps = async (): Promise<void> => {
+    setLoadingWorkspaceApps(true)
+    try {
+      const apps = await fetchWorkspaceApps()
+      setWorkspaceApps(apps)
+      setWorkspaceIds(new Set(apps.map((a) => a.id)))
+      const userId = config.getUserId()
+      let next = pipelineRef.current
+      for (const a of apps) {
+        next = ensurePipelineEntry(userId, next, a.id)
+      }
+      setPipeline(next)
+      pipelineRef.current = next
+    } catch {
+      // best-effort
+    } finally {
+      setLoadingWorkspaceApps(false)
     }
   }
 
@@ -426,9 +512,11 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const openMyApps = (): void => {
+  const openMyApps = (initialTab?: 'saved' | 'recent' | 'workspace'): void => {
+    if (initialTab) setMyAppsInitialTab(initialTab)
     setIsMyAppsOpen(true)
     void refreshMyApps()
+    if (initialTab === 'workspace') void refreshWorkspaceApps()
   }
 
   const closeMyApps = (): void => {
@@ -572,6 +660,9 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       const stored = loadSavedSearches(userId)
       setSavedSearches(stored)
       savedSearchesRef.current = stored
+      const storedPipeline = loadPipeline(userId)
+      setPipeline(storedPipeline)
+      pipelineRef.current = storedPipeline
     }
 
     void (async () => {
@@ -586,6 +677,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         // non-critical
       }
       await refreshSavedState()
+      void refreshWorkspaceApps()
 
       // Refresh saved search counts after a short delay
       setTimeout(() => {
@@ -617,6 +709,10 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       allowedAuthorities,
       categories,
       mapApps,
+      pipeline,
+      workspaceApps,
+      loadingWorkspaceApps,
+      myAppsInitialTab,
       selectedAppId,
       isMyAppsOpen,
       savedApps,
@@ -634,6 +730,11 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       openMyApps,
       closeMyApps,
       refreshMyApps,
+      refreshWorkspaceApps,
+      removeFromWorkspace: removeFromWorkspaceAction,
+      setLeadStatus: setLeadStatusAction,
+      setLeadNotes: setLeadNotesAction,
+      getPipelineEntry: getPipelineEntryAction,
       runSearch,
       loadMore,
       setFilters,
@@ -662,7 +763,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       fetchRecentApps,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [filters, activeQuickFilter, sort, view, apps, rawApps, total, totalPages, page, perPage, loading, loadingMore, loadingMap, error, savedIds, recentIds, workspaceIds, selectedIds, allowedAuthorities, categories, mapApps, selectedAppId, isMyAppsOpen, savedApps, recentApps, loadingMyApps, savedSearches, saveSearchModalOpen, loadingSavedSearchCounts],
+    [filters, activeQuickFilter, sort, view, apps, rawApps, total, totalPages, page, perPage, loading, loadingMore, loadingMap, error, savedIds, recentIds, workspaceIds, selectedIds, allowedAuthorities, categories, mapApps, pipeline, workspaceApps, loadingWorkspaceApps, myAppsInitialTab, selectedAppId, isMyAppsOpen, savedApps, recentApps, loadingMyApps, savedSearches, saveSearchModalOpen, loadingSavedSearchCounts],
   )
 
   return <SearchContext.Provider value={value}>{children}</SearchContext.Provider>

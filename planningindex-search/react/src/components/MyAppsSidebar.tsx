@@ -1,13 +1,14 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { X, Bookmark, Clock, BookmarkCheck, RotateCcw, TriangleAlert as AlertTriangle } from 'lucide-react'
+import { X, Bookmark, Clock, BookmarkCheck, RotateCcw, TriangleAlert as AlertTriangle, Briefcase } from 'lucide-react'
 import { useSearchContext } from '../context/SearchContext'
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import SavedAppCard from './SavedAppCard'
 import RecentAppCard from './RecentAppCard'
+import WorkspaceAppCard from './WorkspaceAppCard'
 import MyAppsSkeleton from './MyAppsSkeleton'
 
-type TabId = 'saved' | 'recent'
+type TabId = 'saved' | 'recent' | 'workspace'
 
 export default function MyAppsSidebar() {
   const {
@@ -22,17 +23,31 @@ export default function MyAppsSidebar() {
     refreshMyApps,
     openDetailPanel,
     selectedAppId,
+    workspaceApps,
+    loadingWorkspaceApps,
+    refreshWorkspaceApps,
+    removeFromWorkspace,
+    pipeline,
+    myAppsInitialTab,
   } = useSearchContext()
 
   const [visible, setVisible] = useState(false)
   const [activeTab, setActiveTab] = useState<TabId>('saved')
   const [removingId, setRemovingId] = useState<number | null>(null)
   const [savingId, setSavingId] = useState<number | null>(null)
+  const [removingWsId, setRemovingWsId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
   const prevFocusRef = useRef<HTMLElement | null>(null)
   const prefersReducedMotion = usePrefersReducedMotion()
   useFocusTrap(isMyAppsOpen, panelRef)
+
+  // Sync active tab when sidebar opens with a specific tab
+  useEffect(() => {
+    if (isMyAppsOpen && myAppsInitialTab) {
+      setActiveTab(myAppsInitialTab)
+    }
+  }, [isMyAppsOpen, myAppsInitialTab])
 
   // Slide-in animation + body scroll lock
   useEffect(() => {
@@ -102,6 +117,23 @@ export default function MyAppsSidebar() {
       }
     },
     [savingId, saveApp, refreshMyApps, prefersReducedMotion],
+  )
+
+  const handleRemoveFromWorkspace = useCallback(
+    async (id: number) => {
+      if (removingWsId !== null) return
+      setRemovingWsId(id)
+      try {
+        await removeFromWorkspace(id)
+        setTimeout(() => {
+          setRemovingWsId(null)
+        }, prefersReducedMotion ? 0 : 300)
+      } catch {
+        setRemovingWsId(null)
+        setError('Could not remove from workspace. Please try again.')
+      }
+    },
+    [removingWsId, removeFromWorkspace, prefersReducedMotion],
   )
 
   const handleViewDetails = useCallback(
@@ -183,6 +215,17 @@ export default function MyAppsSidebar() {
             label="Recently Viewed"
             controlsId="myapps-recent-panel"
           />
+          <TabButton
+            active={activeTab === 'workspace'}
+            onClick={() => {
+              setActiveTab('workspace')
+              void refreshWorkspaceApps()
+            }}
+            count={workspaceApps.length}
+            icon={<Briefcase className="h-4 w-4" />}
+            label="Workspace"
+            controlsId="myapps-workspace-panel"
+          />
         </div>
 
         {/* Content */}
@@ -254,6 +297,37 @@ export default function MyAppsSidebar() {
                       app={app}
                       saving={savingId === app.id}
                       onSave={handleSaveFromRecent}
+                      onViewDetails={handleViewDetails}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {!error && activeTab === 'workspace' && (
+            <div
+              id="myapps-workspace-panel"
+              role="tabpanel"
+              aria-labelledby="myapps-workspace-tab"
+            >
+              {loadingWorkspaceApps ? (
+                <MyAppsSkeleton />
+              ) : workspaceApps.length === 0 ? (
+                <EmptyState
+                  icon={<Briefcase className="h-8 w-8 text-slate-300" />}
+                  title="Your workspace is empty"
+                  message="Add applications to your workspace to track them as leads through your pipeline."
+                />
+              ) : (
+                <div className="space-y-3 p-4">
+                  {workspaceApps.map((app) => (
+                    <WorkspaceAppCard
+                      key={app.id}
+                      app={app}
+                      pipelineEntry={pipeline[app.id]}
+                      removing={removingWsId === app.id}
+                      onRemove={handleRemoveFromWorkspace}
                       onViewDetails={handleViewDetails}
                     />
                   ))}
