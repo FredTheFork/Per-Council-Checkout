@@ -57,7 +57,7 @@ class PIC_PmproHooks
         add_filter('pmpro_checkout_skip_account_fields', [self::class, 'skip_account_fields_for_logged_in'], 10, 1);
 
         // Handle Stripe Checkout Session success redirect
-        add_action('template_redirect', [self::class, 'handle_stripe_success'], 5);
+        add_action('template_redirect', [self::class, 'handle_stripe_success'], 1);
     }
 
     // ── Settings precedence ──────────────────────────────────────────
@@ -680,6 +680,11 @@ class PIC_PmproHooks
      * &session_id=..., we retrieve the session from Stripe, verify payment,
      * create the WP user (if not logged in), save user meta, and grant the
      * PMPro membership level.
+     *
+     * This method must run BEFORE PMPro's content-protection redirect fires,
+     * so it's hooked at template_redirect priority 1 (PMPro redirects at
+     * priority 10). Every failure path logs to error_log so the admin can
+     * diagnose issues instead of seeing a silent redirect to /login/.
      */
     public static function handle_stripe_success()
     {
@@ -689,6 +694,15 @@ class PIC_PmproHooks
 
         $session_id = sanitize_text_field($_GET['session_id']);
         if (empty($session_id)) {
+            error_log('[PIC] handle_stripe_success: missing session_id');
+            return;
+        }
+
+        // Idempotency guard — if we've already processed this Stripe session
+        // (e.g. user refreshed the success page), don't re-create the user or
+        // re-grant the level. Just let the page render normally.
+        $processed_flag = 'pic_stripe_done_' . $session_id;
+        if (get_transient($processed_flag)) {
             return;
         }
 
@@ -717,6 +731,7 @@ class PIC_PmproHooks
             }
         }
         if (empty($secret_key)) {
+            error_log('[PIC] handle_stripe_success: no Stripe secret key found in any option');
             return;
         }
 
@@ -726,23 +741,38 @@ class PIC_PmproHooks
         ]);
 
         if (is_wp_error($response)) {
+            error_log('[PIC] handle_stripe_success: Stripe API error: ' . $response->get_error_message());
             return;
         }
 
         $session = json_decode(wp_remote_retrieve_body($response), true);
-        if (empty($session) || $session['payment_status'] !== 'paid') {
+        if (empty($session)) {
+            error_log('[PIC] handle_stripe_success: empty Stripe session response');
             return;
         }
 
+        // Accept both 'paid' (one-time) and 'complete' (subscription) statuses.
+        // Some Stripe Checkout sessions for subscriptions return payment_status
+        // 'paid' while the session status is 'complete'.
+        $is_paid = ($session['payment_status'] ?? '') === 'paid';
+        $is_complete = ($session['status'] ?? '') === 'complete';
+        if (!$is_paid && !$is_complete) {
+            error_log('[PIC] handle_stripe_success: payment not complete. payment_status=' . ($session['payment_status'] ?? 'unknown') . ' status=' . ($session['status'] ?? 'unknown'));
+            return;
+        }
+
+        // Retrieve checkout metadata — try client_reference_id transient first,
+        // then the pic_key URL parameter, then Stripe session metadata.
         $ref_key = $session['client_reference_id'] ?? '';
         $meta = $ref_key ? get_transient($ref_key) : false;
 
-        // Fallback: if the transient expired, retrieve metadata from the
-        // Stripe session itself (we stored it as session metadata during
-        // creation). This makes fulfillment robust against transient expiry.
         if (!$meta || !is_array($meta)) {
             $stripe_meta = $session['metadata'] ?? [];
             $pic_key = $stripe_meta['pic_session_key'] ?? '';
+            // Also check the URL parameter we added to the success_url
+            if (empty($pic_key) && !empty($_GET['pic_key'])) {
+                $pic_key = sanitize_text_field($_GET['pic_key']);
+            }
             if ($pic_key) {
                 $meta = get_transient($pic_key);
             }
@@ -750,27 +780,29 @@ class PIC_PmproHooks
             if (!$meta && !empty($stripe_meta['pic_level_id'])) {
                 $meta = [
                     'level_id' => intval($stripe_meta['pic_level_id']),
-                    'councils' => [],
-                    'template' => 'standard-planning',
+                    'councils' => json_decode($stripe_meta['pic_councils'] ?? '[]', true) ?: [],
+                    'template' => $stripe_meta['pic_template'] ?? 'standard-planning',
                     'business' => [],
                     'account' => [
                         'email' => $session['customer_details']['email'] ?? '',
                     ],
-                    'price' => 0,
+                    'price' => floatval($stripe_meta['pic_price'] ?? 0),
                     'user_id' => 0,
                 ];
             }
         }
+
         if (!$meta || !is_array($meta)) {
+            error_log('[PIC] handle_stripe_success: no checkout metadata found for session ' . $session_id);
             return;
         }
 
         $level_id   = intval($meta['level_id']);
-        $councils   = $meta['councils'];
-        $template   = $meta['template'];
-        $business   = $meta['business'];
-        $account    = $meta['account'];
-        $price      = $meta['price'];
+        $councils   = is_array($meta['councils'] ?? null) ? $meta['councils'] : [];
+        $template   = $meta['template'] ?? 'standard-planning';
+        $business   = is_array($meta['business'] ?? null) ? $meta['business'] : [];
+        $account    = is_array($meta['account'] ?? null) ? $meta['account'] : [];
+        $price      = floatval($meta['price'] ?? 0);
 
         // Create or retrieve WP user
         $user_id = 0;
@@ -781,6 +813,7 @@ class PIC_PmproHooks
             $username = $account['username'] ?? '';
 
             if (empty($email)) {
+                error_log('[PIC] handle_stripe_success: no email in metadata or Stripe session');
                 return;
             }
 
@@ -795,90 +828,103 @@ class PIC_PmproHooks
                     $username .= wp_rand(100, 999);
                 }
 
-                $user_id = wp_create_user($username, $account['password'] ?? wp_generate_password(), $email);
+                $password = $account['password'] ?? wp_generate_password();
+                $user_id = wp_create_user($username, $password, $email);
                 if (is_wp_error($user_id)) {
+                    error_log('[PIC] handle_stripe_success: wp_create_user failed for ' . $email . ': ' . $user_id->get_error_message());
                     return;
                 }
             }
         }
 
-        if ($user_id > 0) {
-            // Save user meta — use the same keys the frontend reads
-            if (!empty($councils)) {
-                update_user_meta($user_id, PIC_META_KEY, array_map('sanitize_text_field', (array) $councils));
-            }
-            if (!empty($template)) {
-                update_user_meta($user_id, PIC_META_TEMPLATE, $template);
-            }
-            if ($price > 0) {
-                update_user_meta($user_id, PIC_META_PRICE, number_format(floatval($price), 2, '.', ''));
-            }
-
-            if (!empty($business)) {
-                $checkout_business = [];
-                $field_map = [
-                    'pmpc_company_name'    => 'company_name',
-                    'pmpc_business_email'  => 'email',
-                    'pmpc_business_phone'  => 'phone',
-                    'pmpc_company_address' => 'company_address',
-                    'pmpc_website'         => 'website',
-                    'pmpc_vat_number'      => 'vat_number',
-                ];
-                foreach ($field_map as $bk => $pk) {
-                    if (isset($business[$bk]) && !empty($business[$bk])) {
-                        $checkout_business[$pk] = $business[$bk];
-                    }
-                }
-                $checkout_business['source'] = 'checkout';
-                if (!empty($template)) {
-                    $checkout_business['default_template'] = $template;
-                }
-                update_user_meta($user_id, '_pi_business_info', $checkout_business);
-                update_user_meta($user_id, PIC_META_BUSINESS, $business);
-            }
-
-            // Grant PMPro membership level
-            if (function_exists('pmpro_changeMembershipLevel')) {
-                pmpro_changeMembershipLevel($level_id, $user_id);
-
-                // Create a PMPro order record
-                if (class_exists('MemberOrder')) {
-                    $order = new MemberOrder();
-                    $order->user_id = $user_id;
-                    $order->membership_id = $level_id;
-                    $order->InitialPayment = $price;
-                    $order->PaymentAmount = $price;
-                    $order->BillingPeriod = 'Month';
-                    $order->BillingFrequency = 1;
-                    $order->gateway = 'stripe';
-                    $order->status = 'success';
-                    $order->saveOrder();
-
-                    if (!empty($session['customer'])) {
-                        update_user_meta($user_id, 'pmpro_stripe_customer_id', $session['customer']);
-                    }
-                    if (!empty($session['subscription'])) {
-                        $order->subscription_transaction_id = $session['subscription'];
-                        $order->saveOrder();
-                    }
-                }
-
-                do_action('pmpro_after_checkout', $user_id, $order);
-            }
-
-            // Log in the user if they weren't already
-            if (!is_user_logged_in()) {
-                wp_set_current_user($user_id);
-                wp_set_auth_cookie($user_id, true);
-            }
+        if ($user_id <= 0) {
+            error_log('[PIC] handle_stripe_success: user_id is 0 after creation attempt');
+            return;
         }
 
+        // Save user meta — use the same keys the frontend reads
+        if (!empty($councils)) {
+            update_user_meta($user_id, PIC_META_KEY, array_map('sanitize_text_field', (array) $councils));
+        }
+        if (!empty($template)) {
+            update_user_meta($user_id, PIC_META_TEMPLATE, $template);
+        }
+        if ($price > 0) {
+            update_user_meta($user_id, PIC_META_PRICE, number_format(floatval($price), 2, '.', ''));
+        }
+
+        if (!empty($business)) {
+            $checkout_business = [];
+            $field_map = [
+                'pmpc_company_name'    => 'company_name',
+                'pmpc_business_email'  => 'email',
+                'pmpc_business_phone'  => 'phone',
+                'pmpc_company_address' => 'company_address',
+                'pmpc_website'         => 'website',
+                'pmpc_vat_number'      => 'vat_number',
+            ];
+            foreach ($field_map as $bk => $pk) {
+                if (isset($business[$bk]) && !empty($business[$bk])) {
+                    $checkout_business[$pk] = $business[$bk];
+                }
+            }
+            $checkout_business['source'] = 'checkout';
+            if (!empty($template)) {
+                $checkout_business['default_template'] = $template;
+            }
+            update_user_meta($user_id, '_pi_business_info', $checkout_business);
+            update_user_meta($user_id, PIC_META_BUSINESS, $business);
+        }
+
+        // Grant PMPro membership level
+        $order = null;
+        if (function_exists('pmpro_changeMembershipLevel')) {
+            pmpro_changeMembershipLevel($level_id, $user_id);
+
+            // Create a PMPro order record
+            if (class_exists('MemberOrder')) {
+                $order = new MemberOrder();
+                $order->user_id = $user_id;
+                $order->membership_id = $level_id;
+                $order->InitialPayment = $price;
+                $order->PaymentAmount = $price;
+                $order->BillingPeriod = 'Month';
+                $order->BillingFrequency = 1;
+                $order->gateway = 'stripe';
+                $order->status = 'success';
+                $order->saveOrder();
+
+                if (!empty($session['customer'])) {
+                    update_user_meta($user_id, 'pmpro_stripe_customer_id', $session['customer']);
+                }
+                if (!empty($session['subscription'])) {
+                    $order->subscription_transaction_id = $session['subscription'];
+                    $order->saveOrder();
+                }
+            }
+
+            do_action('pmpro_after_checkout', $user_id, $order);
+        }
+
+        // Log in the user if they weren't already
+        if (!is_user_logged_in()) {
+            wp_set_current_user($user_id);
+            wp_set_auth_cookie($user_id, true);
+        }
+
+        // Mark this Stripe session as processed (idempotency guard for page refreshes)
+        set_transient($processed_flag, 1, 3600);
+
         // Clean up transient
-        delete_transient($ref_key);
+        if ($ref_key) {
+            delete_transient($ref_key);
+        }
 
         // Clear checkout session
         if (session_id() && isset($_SESSION[PIC_SESSION_KEY])) {
             unset($_SESSION[PIC_SESSION_KEY]);
         }
+
+        error_log('[PIC] handle_stripe_success: success — user_id=' . $user_id . ' level=' . $level_id . ' price=' . $price);
     }
 }

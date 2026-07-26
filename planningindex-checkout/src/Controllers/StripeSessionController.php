@@ -164,10 +164,17 @@ class PIC_StripeSession_Controller
         }
 
         // ── 4. Build success/cancel URLs ──────────────────────────────
+        // Generate the session key early so it can be included in the
+        // success_url — handle_stripe_success uses it as a fallback to
+        // retrieve checkout metadata if the transient keyed by
+        // client_reference_id has expired.
+        $session_key = 'pic_stripe_' . wp_generate_password(20, false);
+
         $success_url = home_url('/membership-account/');
         $success_url = add_query_arg([
             'pic_stripe_success' => '1',
             'session_id'         => '{CHECKOUT_SESSION_ID}',
+            'pic_key'            => $session_key,
         ], $success_url);
 
         $cancel_url = home_url('/membership-checkout/');
@@ -204,8 +211,7 @@ class PIC_StripeSession_Controller
             'user_id'   => is_user_logged_in() ? get_current_user_id() : 0,
         ];
 
-        $session_key = 'pic_stripe_' . wp_generate_password(20, false);
-        set_transient($session_key, $session_meta, 3600);
+        set_transient($session_key, $session_meta, 86400);
         self::debug('transient stored', $session_key);
 
         // ── 7. Create Stripe Checkout Session via API ─────────────────
@@ -223,6 +229,9 @@ class PIC_StripeSession_Controller
             'metadata[pic_session_key]' => $session_key,
             'metadata[pic_level_id]'    => (string) $level_id,
             'metadata[pic_council_count]' => (string) count($councils),
+            'metadata[pic_councils]'    => json_encode($councils),
+            'metadata[pic_template]'    => $template,
+            'metadata[pic_price]'       => (string) $price,
             'subscription_data[metadata][pic_session_key]' => $session_key,
             'subscription_data[metadata][pic_level_id]'    => (string) $level_id,
         ];
