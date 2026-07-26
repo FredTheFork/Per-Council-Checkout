@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from 'react'
-import { Loader as Loader2, MapPin, X } from 'lucide-react'
+import { Loader as Loader2, X } from 'lucide-react'
 import { useSearchContext } from '../context/SearchContext'
 import { sortApps } from '../utils/sortApps'
 import { advancedFilterCount } from '../utils/advancedFilters'
@@ -10,6 +10,7 @@ import SkeletonCard from './SkeletonCard'
 import SkeletonRow from './SkeletonRow'
 import EmptyState from './EmptyState'
 import SortDropdown from './SortDropdown'
+import MapView from './MapView'
 
 const SKELETON_GRID_COUNT = 6
 const SKELETON_LIST_COUNT = 10
@@ -93,19 +94,9 @@ export default function ResultsArea() {
     return <EmptyState />
   }
 
-  // Map view placeholder (Stage 6)
+  // Map view
   if (view === 'map') {
-    return (
-      <div className="mx-auto max-w-md py-20 text-center">
-        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
-          <MapPin className="h-8 w-8 text-slate-400" />
-        </div>
-        <h3 className="text-lg font-semibold text-slate-700">Map view</h3>
-        <p className="mt-2 text-sm text-slate-500">
-          The interactive map arrives in Stage 6. Switch to Grid or List to see results now.
-        </p>
-      </div>
-    )
+    return <MapView />
   }
 
   return (
