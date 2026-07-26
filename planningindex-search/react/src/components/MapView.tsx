@@ -54,7 +54,7 @@ export default function MapView() {
     saveApp,
     unsaveApp,
     addToWorkspace,
-    trackView,
+    openDetailPanel,
   } = useSearchContext()
 
   const token = config.getMapboxToken()
@@ -505,10 +505,8 @@ export default function MapView() {
         }}
         onAddToWorkspace={addToWorkspace}
         onViewDetails={(app) => {
-          trackView(app.id)
-          if (app.meta?.info_url) {
-            window.open(app.meta.info_url, '_blank', 'noopener,noreferrer')
-          }
+          closePopup()
+          openDetailPanel(app.id)
         }}
         onClose={() => closePopup()}
       />,

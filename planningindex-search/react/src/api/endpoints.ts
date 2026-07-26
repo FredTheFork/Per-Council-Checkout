@@ -1,6 +1,7 @@
 import { apiGet, apiPost } from './client'
 import { config } from '../config'
 import type {
+  ApiError,
   Authority,
   Category,
   CheckSavedResult,
@@ -161,4 +162,13 @@ export async function addToWorkspace(
   } catch {
     return { success: false, added: false }
   }
+}
+
+export async function fetchAppById(
+  id: number,
+  signal?: AbortSignal,
+): Promise<PlanningApp> {
+  const { data } = await apiGet<PlanningApp[]>(`/apps`, { include: id, per_page: 1 }, signal)
+  if (Array.isArray(data) && data.length > 0) return data[0]
+  throw { status: 404, message: 'Application not found', endpoint: '/apps' } as ApiError
 }

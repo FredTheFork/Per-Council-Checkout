@@ -3,6 +3,7 @@ import { Search, User, Loader as Loader2 } from 'lucide-react'
 import type { PlanningIndexSearchConfig } from './types'
 import SearchHeader from './components/SearchHeader'
 import ResultsArea from './components/ResultsArea'
+import AppDetailPanel from './components/AppDetailPanel'
 
 export default function App() {
   const [config, setConfig] = useState<PlanningIndexSearchConfig | null>(null)
@@ -62,6 +63,9 @@ export default function App() {
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <ResultsArea />
       </main>
+
+      {/* Detail panel overlay */}
+      <AppDetailPanel />
     </div>
   )
 }

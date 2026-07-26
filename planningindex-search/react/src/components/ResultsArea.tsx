@@ -36,7 +36,7 @@ export default function ResultsArea() {
     saveApp,
     unsaveApp,
     addToWorkspace,
-    trackView,
+    openDetailPanel,
     toggleSelected,
     setFilters,
     setQuickFilter,
@@ -61,12 +61,9 @@ export default function ResultsArea() {
 
   const handleViewDetails = useCallback(
     (app: PlanningApp) => {
-      trackView(app.id)
-      if (app.meta?.info_url) {
-        window.open(app.meta.info_url, '_blank', 'noopener,noreferrer')
-      }
+      openDetailPanel(app.id)
     },
-    [trackView],
+    [openDetailPanel],
   )
 
   const hasMore = page < totalPages
