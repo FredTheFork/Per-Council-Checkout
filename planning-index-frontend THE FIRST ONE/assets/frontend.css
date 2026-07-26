@@ -968,9 +968,8 @@
   box-sizing: border-box;
 }
 
-/* When overlay is shown */
-.pi-modal-overlay.open,
-.pi-modal-overlay[style*="display: flex"] {
+/* When overlay is shown — controlled solely by .open class */
+.pi-modal-overlay.open {
   display: flex !important;
   visibility: visible;
   opacity: 1;
@@ -2153,5 +2152,4 @@
     border-radius: 7000px;
     margin-bottom: 6px;
     line-height: 1;
-}
 }

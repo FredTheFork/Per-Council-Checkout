@@ -391,24 +391,17 @@
           </div>
         </div>
         <div class="pi-my-app-actions">
-        <button class="pi-my-app-save-btn${isSaved ? ' saved' : ''}" data-postid="${postId}" title="${isSaved ? 'Saved' : 'Save this app'}">
-          <svg width="18" height="22" viewBox="0 0 20 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-          </svg>
-        </button>
-          ${type === 'recent' ? `
-            <button class="pi-my-app-save-btn${isSaved ? ' saved' : ''}" data-postid="${postId}" title="${isSaved ? 'Saved' : 'Save this app'}">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="${isSaved ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
-                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-              </svg>
-            </button>
-          ` : `
-            <button class="pi-my-app-remove-btn" data-postid="${postId}" title="Remove from saved">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M18 6L6 18M6 6l12 12"></path>
-              </svg>
-            </button>
-          `}
+          ${type === 'recent'
+            ? `<button class="pi-my-app-save-btn${isSaved ? ' saved' : ''}" data-postid="${postId}" title="${isSaved ? 'Saved' : 'Save this app'}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="${isSaved ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                </svg>
+              </button>`
+            : `<button class="pi-my-app-remove-btn" data-postid="${postId}" title="Remove from saved">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 6L6 18M6 6l12 12"></path>
+                </svg>
+              </button>`}
           <button class="pi-my-app-view-btn" data-postid="${postId}" title="View details">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
@@ -948,12 +941,12 @@
       `);
     }
 
-    $('#pi-modal').css('display', 'flex');
+    $('#pi-modal').addClass('open');
     document.body.style.overflow = 'hidden';
   }
 
   function closeModal() {
-    $('#pi-modal').hide();
+    $('#pi-modal').removeClass('open');
     document.body.style.overflow = '';
     currentModalPostId = null;
   }
@@ -1600,7 +1593,7 @@
     $(document).on('keydown', function(e) {
       if (e.key === 'Escape') {
         closeModal();
-        $('#pi-save-modal').hide();
+        $('#pi-save-modal').removeClass('open');
         $('#pi-saved-dropdown').removeClass('open');
       }
     });
@@ -1623,12 +1616,15 @@
     // Save search button - show modal
     $('#pi-save-search-btn').on('click', function() {
       $('#pi-save-name').val('');
-      $('#pi-save-modal').css('display', 'flex');
+      $('#pi-save-modal').addClass('open');
     });
 
-    // Save modal close
+    // Save modal close (X button + Cancel button + backdrop click)
     $('#pi-save-modal-close, #pi-save-cancel').on('click', function() {
-      $('#pi-save-modal').hide();
+      $('#pi-save-modal').removeClass('open');
+    });
+    $('#pi-save-modal').on('click', function(e) {
+      if (e.target === this) $('#pi-save-modal').removeClass('open');
     });
 
     // Save confirm
@@ -1636,38 +1632,25 @@
       const name = $('#pi-save-name').val().trim();
       if (name) {
         saveSearch(name, getCurrentFilters());
-        $('#pi-save-modal').hide();
+        $('#pi-save-modal').removeClass('open');
       }
     });
 
-    // Toggle saved searches dropdown
-    $(document).on('click', '#pi-save-search-btn', function(e) {
-      // Only toggle if not opening save modal
-    });
-
-    // Click on toolbar btn area to toggle dropdown
+    // Click on saved-searches wrapper: stop propagation so the document handler doesn't close the dropdown
     $('.pi-saved-searches').on('click', function(e) {
       if (!$(e.target).closest('#pi-save-search-btn').length) {
         e.stopPropagation();
       }
     });
 
-    // Add a load saved button
-    $(document).on('click', '.pi-toolbar-btn[title="Save current search"]', function(e) {
-      // Toggle dropdown on second part if needed
-    });
-
-    // Actually, let's add a dedicated dropdown toggle
-    // For now, saved searches appear on hover or we add another button
-
     // Load saved search
     $(document).on('click', '.pi-saved-item', function(e) {
       if ($(e.target).closest('.pi-saved-item-delete').length) return;
       const id = $(this).data('id');
       const searches = getSavedSearches();
-      const search = searches.find(s => s.id === id);
-      if (search) {
-        applyFilters(search.filters);
+      const saved = searches.find(s => s.id === id);
+      if (saved) {
+        applyFilters(saved.filters);
         $('#pi-saved-dropdown').removeClass('open');
       }
     });
@@ -1679,18 +1662,7 @@
       deleteSearch(id);
     });
 
-    // Show saved dropdown on hover or click
-    let dropdownTimeout;
-    $('.pi-saved-searches').on('mouseenter', function() {
-      clearTimeout(dropdownTimeout);
-      $('#pi-saved-dropdown').addClass('open');
-    }).on('mouseleave', function() {
-      dropdownTimeout = setTimeout(() => {
-        $('#pi-saved-dropdown').removeClass('open');
-      }, 200);
-    });
-
-    // Click outside to close dropdown
+    // Close saved-searches dropdown when clicking outside it
     $(document).on('click', function(e) {
       if (!$(e.target).closest('.pi-saved-searches').length) {
         $('#pi-saved-dropdown').removeClass('open');
