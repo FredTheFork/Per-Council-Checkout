@@ -2,6 +2,7 @@ import { apiGet, apiPost } from './client'
 import { config } from '../config'
 import type {
   Authority,
+  Category,
   CheckSavedResult,
   PaginatedAppsResult,
   PlanningApp,
@@ -102,6 +103,18 @@ export async function fetchAllowedAuthorities(signal?: AbortSignal): Promise<Aut
     // Endpoint not yet available — fall back to deriving from config term IDs.
   }
   return config.getAllowedAuthorities().map((id) => ({ id, name: '' }))
+}
+
+export async function fetchCategories(signal?: AbortSignal): Promise<Category[]> {
+  try {
+    const { data } = await apiGet<Category[]>('/app-categories', undefined, signal)
+    if (Array.isArray(data)) {
+      return data.filter((c): c is Category => typeof c?.id === 'number' && typeof c?.name === 'string')
+    }
+  } catch {
+    // Endpoint not yet available — panel hides the control gracefully.
+  }
+  return []
 }
 
 export async function fetchSavedApps(signal?: AbortSignal): Promise<UserApp[]> {

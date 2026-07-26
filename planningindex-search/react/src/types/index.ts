@@ -42,6 +42,12 @@ export interface Authority {
   count?: number
 }
 
+export interface Category {
+  id: number
+  name: string
+  count?: number
+}
+
 export interface UserApp extends PlanningApp {
   timestamp?: string
   saved: boolean
@@ -55,6 +61,11 @@ export interface SearchFilters {
   date_to?: string
   highValueOnly?: boolean
   constructionOnly?: boolean
+  estValueMin?: number
+  estValueMax?: number
+  hideSaved?: boolean
+  hideViewed?: boolean
+  hideWorkspace?: boolean
 }
 
 export type QuickFilterId =
