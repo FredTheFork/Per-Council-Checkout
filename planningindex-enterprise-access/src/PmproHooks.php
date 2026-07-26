@@ -654,7 +654,7 @@ class PIE_PmproHooks
                 }
             }
 
-            do_action('pmpro_after_checkout', $user_id);
+            do_action('pmpro_after_checkout', $user_id, $morder);
 
             wp_set_current_user($user_id);
             wp_set_auth_cookie($user_id, true);

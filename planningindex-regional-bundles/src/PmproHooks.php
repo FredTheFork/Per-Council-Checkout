@@ -663,10 +663,6 @@ class PIRB_PmproHooks
                 update_user_meta($user_id, '_pi_business_info', $pi_business);
             }
 
-            update_user_meta($user_id, '_pi_selected_councils', $councils);
-            update_user_meta($user_id, '_pi_selected_template', $template);
-            update_user_meta($user_id, '_pi_monthly_cost', $price);
-
             if (function_exists('pmpro_changeMembershipLevel')) {
                 pmpro_changeMembershipLevel($user_id, $level_id);
             }
@@ -689,7 +685,7 @@ class PIRB_PmproHooks
                 }
             }
 
-            do_action('pmpro_after_checkout', $user_id);
+            do_action('pmpro_after_checkout', $user_id, $morder);
 
             wp_set_current_user($user_id);
             wp_set_auth_cookie($user_id, true);

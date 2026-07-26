@@ -803,19 +803,38 @@ class PIC_PmproHooks
         }
 
         if ($user_id > 0) {
-            // Save user meta
-            update_user_meta($user_id, '_pi_selected_councils', $councils);
-            update_user_meta($user_id, '_pi_selected_template', $template);
-            update_user_meta($user_id, '_pi_monthly_cost', $price);
+            // Save user meta — use the same keys the frontend reads
+            if (!empty($councils)) {
+                update_user_meta($user_id, PIC_META_KEY, array_map('sanitize_text_field', (array) $councils));
+            }
+            if (!empty($template)) {
+                update_user_meta($user_id, PIC_META_TEMPLATE, $template);
+            }
+            if ($price > 0) {
+                update_user_meta($user_id, PIC_META_PRICE, number_format(floatval($price), 2, '.', ''));
+            }
 
             if (!empty($business)) {
-                $business_info = [
-                    'company_name'    => $business['pmpc_company_name'] ?? '',
-                    'business_email'  => $business['pmpc_business_email'] ?? '',
-                    'business_phone'  => $business['pmpc_business_phone'] ?? '',
-                    'company_address' => $business['pmpc_company_address'] ?? '',
+                $checkout_business = [];
+                $field_map = [
+                    'pmpc_company_name'    => 'company_name',
+                    'pmpc_business_email'  => 'email',
+                    'pmpc_business_phone'  => 'phone',
+                    'pmpc_company_address' => 'company_address',
+                    'pmpc_website'         => 'website',
+                    'pmpc_vat_number'      => 'vat_number',
                 ];
-                update_user_meta($user_id, '_pi_business_info', $business_info);
+                foreach ($field_map as $bk => $pk) {
+                    if (isset($business[$bk]) && !empty($business[$bk])) {
+                        $checkout_business[$pk] = $business[$bk];
+                    }
+                }
+                $checkout_business['source'] = 'checkout';
+                if (!empty($template)) {
+                    $checkout_business['default_template'] = $template;
+                }
+                update_user_meta($user_id, '_pi_business_info', $checkout_business);
+                update_user_meta($user_id, PIC_META_BUSINESS, $business);
             }
 
             // Grant PMPro membership level
@@ -840,11 +859,11 @@ class PIC_PmproHooks
                     }
                     if (!empty($session['subscription'])) {
                         $order->subscription_transaction_id = $session['subscription'];
-                        $order->updateOrder();
+                        $order->saveOrder();
                     }
                 }
 
-                do_action('pmpro_after_checkout', $user_id);
+                do_action('pmpro_after_checkout', $user_id, $order);
             }
 
             // Log in the user if they weren't already
