@@ -14,12 +14,18 @@ import {
   fetchCategories,
   fetchRecentApps,
   fetchSavedApps,
+  fetchSearchCount,
   checkSaved,
   saveApp,
   unsaveApp,
   trackView,
   addToWorkspace,
 } from '../api'
+import {
+  loadSavedSearches,
+  persistSavedSearches,
+  MAX_SAVED_SEARCHES,
+} from '../utils/savedSearchStorage'
 import { isHighValue, isConstructionJob } from '../utils'
 import type {
   ApiError,
@@ -27,11 +33,13 @@ import type {
   Category,
   PlanningApp,
   QuickFilterId,
+  SavedSearch,
   SearchFilters,
   SortOption,
   UserApp,
   ViewMode,
 } from '../types'
+import { config } from '../config'
 
 export interface SearchState {
   filters: SearchFilters
@@ -63,6 +71,15 @@ export interface SearchContextValue extends SearchState {
   savedApps: UserApp[]
   recentApps: UserApp[]
   loadingMyApps: boolean
+  savedSearches: SavedSearch[]
+  saveSearchModalOpen: boolean
+  loadingSavedSearchCounts: boolean
+  openSaveSearchModal: () => void
+  closeSaveSearchModal: () => void
+  saveCurrentSearch: (name: string) => boolean
+  deleteSavedSearch: (id: number) => void
+  applySavedSearch: (search: SavedSearch) => void
+  refreshSavedSearchCounts: () => Promise<void>
   openMyApps: () => void
   closeMyApps: () => void
   refreshMyApps: () => Promise<void>
@@ -166,6 +183,12 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [savedApps, setSavedApps] = useState<UserApp[]>([])
   const [recentApps, setRecentApps] = useState<UserApp[]>([])
   const [loadingMyApps, setLoadingMyApps] = useState(false)
+  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([])
+  const [saveSearchModalOpen, setSaveSearchModalOpen] = useState(false)
+  const [loadingSavedSearchCounts, setLoadingSavedSearchCounts] = useState(false)
+
+  const savedSearchesRef = useRef<SavedSearch[]>(savedSearches)
+  savedSearchesRef.current = savedSearches
 
   const abortRef = useRef<AbortController | null>(null)
   const mapAbortRef = useRef<AbortController | null>(null)
@@ -412,6 +435,111 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     setIsMyAppsOpen(false)
   }
 
+  const openSaveSearchModal = (): void => {
+    setSaveSearchModalOpen(true)
+  }
+
+  const closeSaveSearchModal = (): void => {
+    setSaveSearchModalOpen(false)
+  }
+
+  const saveCurrentSearch = (name: string): boolean => {
+    const trimmed = name.trim()
+    if (!trimmed) return false
+    if (savedSearchesRef.current.length >= MAX_SAVED_SEARCHES) return false
+
+    const now = new Date().toISOString()
+    const search: SavedSearch = {
+      id: Date.now(),
+      name: trimmed,
+      filters: { ...filtersRef.current },
+      sort: sortRef.current,
+      created_at: now,
+      lastAppliedAt: now,
+      newCount: 0,
+    }
+
+    const userId = config.getUserId()
+    const next = [...savedSearchesRef.current, search]
+    persistSavedSearches(userId, next)
+    setSavedSearches(next)
+    setSaveSearchModalOpen(false)
+    return true
+  }
+
+  const deleteSavedSearch = (id: number): void => {
+    const userId = config.getUserId()
+    const next = savedSearchesRef.current.filter((s) => s.id !== id)
+    persistSavedSearches(userId, next)
+    setSavedSearches(next)
+  }
+
+  const applySavedSearch = (search: SavedSearch): void => {
+    const userId = config.getUserId()
+    const now = new Date().toISOString()
+
+    setActiveQuickFilter(null)
+    setSortState(search.sort)
+    sortRef.current = search.sort
+    setFiltersState(search.filters)
+    filtersRef.current = search.filters
+
+    const next = savedSearchesRef.current.map((s) =>
+      s.id === search.id ? { ...s, lastAppliedAt: now, newCount: 0 } : s,
+    )
+    persistSavedSearches(userId, next)
+    setSavedSearches(next)
+
+    void runSearch()
+  }
+
+  const refreshSavedSearchCounts = async (): Promise<void> => {
+    if (savedSearchesRef.current.length === 0) return
+    setLoadingSavedSearchCounts(true)
+
+    const results = await Promise.allSettled(
+      savedSearchesRef.current.map(async (s) => {
+        const now = new Date()
+        const lastApplied = s.lastAppliedAt ? new Date(s.lastAppliedAt) : null
+        const filterDate = s.filters.date_from ? new Date(s.filters.date_from) : null
+
+        let effectiveDate: Date | null = lastApplied
+        if (filterDate && lastApplied) {
+          effectiveDate = filterDate > lastApplied ? filterDate : lastApplied
+        } else if (filterDate) {
+          effectiveDate = filterDate
+        }
+
+        const dateFrom = effectiveDate
+          ? effectiveDate.toISOString().slice(0, 10)
+          : undefined
+
+        const countFilters: SearchFilters = { ...s.filters }
+        if (dateFrom) {
+          countFilters.date_from = dateFrom
+        }
+
+        const count = await fetchSearchCount(countFilters)
+        return { id: s.id, count }
+      }),
+    )
+
+    const counts: Record<number, number | undefined> = {}
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        counts[result.value.id] = result.value.count
+      }
+    }
+
+    const userId = config.getUserId()
+    const next = savedSearchesRef.current.map((s) =>
+      s.id in counts ? { ...s, newCount: counts[s.id] } : s,
+    )
+    persistSavedSearches(userId, next)
+    setSavedSearches(next)
+    setLoadingSavedSearchCounts(false)
+  }
+
   const refreshSavedState = async (): Promise<void> => {
     try {
       const [saved, recent] = await Promise.all([fetchSavedApps(), fetchRecentApps()])
@@ -439,6 +567,13 @@ export function SearchProvider({ children }: { children: ReactNode }) {
 
   // Hydrate on mount
   useMemo(() => {
+    const userId = config.getUserId()
+    if (userId > 0) {
+      const stored = loadSavedSearches(userId)
+      setSavedSearches(stored)
+      savedSearchesRef.current = stored
+    }
+
     void (async () => {
       try {
         const [authorities, cats] = await Promise.all([
@@ -451,6 +586,11 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         // non-critical
       }
       await refreshSavedState()
+
+      // Refresh saved search counts after a short delay
+      setTimeout(() => {
+        void refreshSavedSearchCounts()
+      }, 500)
     })()
   }, [])
 
@@ -482,6 +622,15 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       savedApps,
       recentApps,
       loadingMyApps,
+      savedSearches,
+      saveSearchModalOpen,
+      loadingSavedSearchCounts,
+      openSaveSearchModal,
+      closeSaveSearchModal,
+      saveCurrentSearch,
+      deleteSavedSearch,
+      applySavedSearch,
+      refreshSavedSearchCounts,
       openMyApps,
       closeMyApps,
       refreshMyApps,
@@ -513,7 +662,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       fetchRecentApps,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [filters, activeQuickFilter, sort, view, apps, rawApps, total, totalPages, page, perPage, loading, loadingMore, loadingMap, error, savedIds, recentIds, workspaceIds, selectedIds, allowedAuthorities, categories, mapApps, selectedAppId, isMyAppsOpen, savedApps, recentApps, loadingMyApps],
+    [filters, activeQuickFilter, sort, view, apps, rawApps, total, totalPages, page, perPage, loading, loadingMore, loadingMap, error, savedIds, recentIds, workspaceIds, selectedIds, allowedAuthorities, categories, mapApps, selectedAppId, isMyAppsOpen, savedApps, recentApps, loadingMyApps, savedSearches, saveSearchModalOpen, loadingSavedSearchCounts],
   )
 
   return <SearchContext.Provider value={value}>{children}</SearchContext.Provider>

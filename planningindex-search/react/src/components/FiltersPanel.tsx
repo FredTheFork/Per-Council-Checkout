@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { RotateCcw } from 'lucide-react'
+import { RotateCcw, Bookmark } from 'lucide-react'
 import { useSearchContext } from '../context/SearchContext'
+import { advancedFilterCount } from '../utils/advancedFilters'
+import { config } from '../config'
 import AuthorityMultiSelect from './AuthorityMultiSelect'
 
 interface ToggleSwitchProps {
@@ -75,6 +77,7 @@ export default function FiltersPanel({ open }: FiltersPanelProps) {
     savedIds,
     recentIds,
     workspaceIds,
+    openSaveSearchModal,
   } = useSearchContext()
 
   const [minValue, setMinValue] = useState('')
@@ -278,7 +281,19 @@ export default function FiltersPanel({ open }: FiltersPanelProps) {
           </div>
         </div>
 
-        <div className="mt-5 flex justify-end border-t border-slate-100 pt-4">
+        <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4">
+          {config.isLoggedIn() && advancedFilterCount(filters) > 0 ? (
+            <button
+              type="button"
+              onClick={openSaveSearchModal}
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-brand-600 transition-colors hover:bg-brand-50"
+            >
+              <Bookmark className="h-3.5 w-3.5" />
+              Save search
+            </button>
+          ) : (
+            <span />
+          )}
           <button
             type="button"
             onClick={handleClearAll}

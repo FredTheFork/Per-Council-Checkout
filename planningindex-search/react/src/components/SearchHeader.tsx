@@ -4,6 +4,7 @@ import SearchBar from './SearchBar'
 import QuickFilterChips from './QuickFilterChips'
 import FiltersPanel from './FiltersPanel'
 import ViewToggle from './ViewToggle'
+import SavedSearchesDropdown from './SavedSearchesDropdown'
 import { useSearchContext } from '../context/SearchContext'
 import { advancedFilterCount } from '../utils/advancedFilters'
 import { config } from '../config'
@@ -45,6 +46,7 @@ export default function SearchHeader() {
                 )}
               </button>
             )}
+            {config.isLoggedIn() && <SavedSearchesDropdown />}
             <button
               type="button"
               onClick={() => setPanelOpen((v) => !v)}

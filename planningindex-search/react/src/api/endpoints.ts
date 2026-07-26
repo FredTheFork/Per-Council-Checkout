@@ -172,3 +172,21 @@ export async function fetchAppById(
   if (Array.isArray(data) && data.length > 0) return data[0]
   throw { status: 404, message: 'Application not found', endpoint: '/apps' } as ApiError
 }
+
+export async function fetchSearchCount(
+  filters: SearchFilters,
+  signal?: AbortSignal,
+): Promise<number> {
+  const params: Record<string, unknown> = {
+    page: 1,
+    per_page: 1,
+  }
+  if (filters.search) params.search = filters.search
+  if (filters.authority && filters.authority.length > 0) params.authority = filters.authority
+  if (filters.app_category) params.app_category = filters.app_category
+  if (filters.date_from) params.date_from = filters.date_from
+  if (filters.date_to) params.date_to = filters.date_to
+
+  const { headers } = await apiGet<PlanningApp[]>('/apps', params, signal)
+  return parseInt(headers.get('X-WP-Total') ?? '0', 10) || 0
+}

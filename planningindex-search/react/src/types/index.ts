@@ -144,6 +144,8 @@ export interface SavedSearch {
   filters: SearchFilters
   sort: SortOption
   created_at: string
+  lastAppliedAt: string
+  newCount: number | undefined
 }
 
 export interface ApiError {
