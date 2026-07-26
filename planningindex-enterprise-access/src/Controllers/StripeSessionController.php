@@ -131,10 +131,13 @@ class PIE_StripeSessionController
             ], 500);
         }
 
+        $session_key = 'pie_stripe_' . wp_generate_password(20, false);
+
         $success_url = home_url('/membership-account/');
         $success_url = add_query_arg([
             'pie_stripe_success' => '1',
             'session_id'          => '{CHECKOUT_SESSION_ID}',
+            'pie_key'             => $session_key,
         ], $success_url);
 
         $cancel_url = home_url('/membership-checkout/');
@@ -166,8 +169,7 @@ class PIE_StripeSessionController
             'user_id'   => is_user_logged_in() ? get_current_user_id() : 0,
         ];
 
-        $session_key = 'pie_stripe_' . wp_generate_password(20, false);
-        set_transient($session_key, $session_meta, 3600);
+        set_transient($session_key, $session_meta, 86400);
         self::debug('transient stored', $session_key);
 
         $product_name = 'Planning Index Enterprise Access — All UK Councils';
@@ -186,6 +188,7 @@ class PIE_StripeSessionController
             'client_reference_id'                                 => $session_key,
             'metadata[pie_session_key]'                           => $session_key,
             'metadata[pie_level_id]'                              => (string) $level_id,
+            'metadata[pie_price]'                                 => (string) $price,
             'subscription_data[metadata][pie_session_key]'       => $session_key,
             'subscription_data[metadata][pie_level_id]'          => (string) $level_id,
         ];

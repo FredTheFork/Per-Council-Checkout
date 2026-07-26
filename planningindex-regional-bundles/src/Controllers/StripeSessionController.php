@@ -159,10 +159,13 @@ class PIRB_StripeSession_Controller
             ], 500);
         }
 
+        $session_key = 'pirb_stripe_' . wp_generate_password(20, false);
+
         $success_url = home_url('/membership-account/');
         $success_url = add_query_arg([
             'pirb_stripe_success' => '1',
             'session_id'          => '{CHECKOUT_SESSION_ID}',
+            'pirb_key'            => $session_key,
         ], $success_url);
 
         $cancel_url = home_url('/membership-checkout/');
@@ -196,8 +199,7 @@ class PIRB_StripeSession_Controller
             'user_id'   => is_user_logged_in() ? get_current_user_id() : 0,
         ];
 
-        $session_key = 'pirb_stripe_' . wp_generate_password(20, false);
-        set_transient($session_key, $session_meta, 3600);
+        set_transient($session_key, $session_meta, 86400);
         self::debug('transient stored', $session_key);
 
         $region_label = !empty($region) ? $region : (count($councils) . ' councils');
@@ -218,6 +220,7 @@ class PIRB_StripeSession_Controller
             'metadata[pirb_session_key]'                          => $session_key,
             'metadata[pirb_level_id]'                             => (string) $level_id,
             'metadata[pirb_region]'                               => $region,
+            'metadata[pirb_price]'                                => (string) $price,
             'subscription_data[metadata][pirb_session_key]'       => $session_key,
             'subscription_data[metadata][pirb_level_id]'          => (string) $level_id,
         ];

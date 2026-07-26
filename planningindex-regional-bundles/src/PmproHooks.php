@@ -21,7 +21,7 @@ class PIRB_PmproHooks
         add_action('pmpro_checkout_preheader', [__CLASS__, 'restore_session'], 10);
         add_action('pmpro_checkout_preheader', [__CLASS__, 'load_custom_template'], 10);
         add_filter('pmpro_checkout_skip_account_fields', [__CLASS__, 'skip_account_fields_for_logged_in'], 10, 1);
-        add_action('template_redirect', [__CLASS__, 'handle_stripe_success'], 10);
+        add_action('template_redirect', [__CLASS__, 'handle_stripe_success'], 1);
     }
 
     public static function should_use_settings(int $user_id): bool
@@ -517,14 +517,22 @@ class PIRB_PmproHooks
 
         $session_id = isset($_GET['session_id']) ? sanitize_text_field($_GET['session_id']) : '';
         if (empty($session_id)) {
+            error_log('[PIRB] handle_stripe_success: missing session_id');
+            return;
+        }
+
+        // Idempotency guard — don't re-process if user refreshes the page
+        $processed_flag = 'pirb_stripe_done_' . $session_id;
+        if (get_transient($processed_flag)) {
             return;
         }
 
         $session_meta = null;
         $transient_key = '';
 
-        if (isset($_GET['client_reference_id'])) {
-            $transient_key = sanitize_text_field($_GET['client_reference_id']);
+        // Try URL parameter first (we add pirb_key to the success_url)
+        if (isset($_GET['pirb_key'])) {
+            $transient_key = sanitize_text_field($_GET['pirb_key']);
         }
 
         if (!empty($transient_key)) {
@@ -556,11 +564,14 @@ class PIRB_PmproHooks
         }
 
         if (empty($secret_key)) {
+            error_log('[PIRB] handle_stripe_success: no Stripe secret key found');
             wp_safe_redirect(home_url('/membership-account/'));
             exit;
         }
 
-        if (empty($session_meta) && !empty($session_id)) {
+        // Retrieve the Stripe session to verify payment and get metadata
+        $stripe_session = null;
+        if (!empty($session_id)) {
             $response = wp_remote_get('https://api.stripe.com/v1/checkout/sessions/' . $session_id, [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $secret_key,
@@ -568,32 +579,50 @@ class PIRB_PmproHooks
                 'timeout' => 30,
             ]);
 
-            if (!is_wp_error($response)) {
-                $body = json_decode(wp_remote_retrieve_body($response), true);
-                if (is_array($body)) {
-                    $meta = isset($body['metadata']) ? $body['metadata'] : [];
-                    $transient_key = $meta['pirb_session_key'] ?? ($body['client_reference_id'] ?? '');
-                    if (!empty($transient_key)) {
-                        $session_meta = get_transient($transient_key);
-                    }
-                    if (empty($session_meta)) {
-                        $session_meta = [
-                            'region'   => $meta['pirb_region'] ?? '',
-                            'level_id' => intval($meta['pirb_level_id'] ?? 59),
-                            'councils' => [],
-                            'template' => '',
-                            'business' => [],
-                            'account'  => [],
-                            'price'    => 0,
-                            'logged_in' => false,
-                            'user_id'  => 0,
-                        ];
-                    }
+            if (is_wp_error($response)) {
+                error_log('[PIRB] handle_stripe_success: Stripe API error: ' . $response->get_error_message());
+            } else {
+                $stripe_session = json_decode(wp_remote_retrieve_body($response), true);
+            }
+        }
+
+        // Verify payment — accept both 'paid' and 'complete'
+        if (!empty($stripe_session)) {
+            $is_paid = ($stripe_session['payment_status'] ?? '') === 'paid';
+            $is_complete = ($stripe_session['status'] ?? '') === 'complete';
+            if (!$is_paid && !$is_complete) {
+                error_log('[PIRB] handle_stripe_success: payment not complete. payment_status=' . ($stripe_session['payment_status'] ?? 'unknown') . ' status=' . ($stripe_session['status'] ?? 'unknown'));
+                wp_safe_redirect(home_url('/membership-account/'));
+                exit;
+            }
+
+            // If transient expired, try to recover from Stripe session metadata
+            if (empty($session_meta)) {
+                $meta = $stripe_session['metadata'] ?? [];
+                $transient_key = $meta['pirb_session_key'] ?? ($stripe_session['client_reference_id'] ?? '');
+                if (!empty($transient_key)) {
+                    $session_meta = get_transient($transient_key);
+                }
+                if (empty($session_meta)) {
+                    $session_meta = [
+                        'region'    => $meta['pirb_region'] ?? '',
+                        'level_id'  => intval($meta['pirb_level_id'] ?? 59),
+                        'councils'  => [],
+                        'template'  => '',
+                        'business'  => [],
+                        'account'   => [
+                            'email' => $stripe_session['customer_details']['email'] ?? '',
+                        ],
+                        'price'     => 0,
+                        'logged_in' => false,
+                        'user_id'   => 0,
+                    ];
                 }
             }
         }
 
         if (empty($session_meta) || !is_array($session_meta)) {
+            error_log('[PIRB] handle_stripe_success: no session metadata found for session ' . $session_id);
             wp_safe_redirect(home_url('/membership-account/'));
             exit;
         }
@@ -613,7 +642,7 @@ class PIRB_PmproHooks
         if ($logged_in && $existing_user_id > 0) {
             $user_id = $existing_user_id;
         } else {
-            $email = $account['email'] ?? '';
+            $email = $account['email'] ?? ($stripe_session['customer_details']['email'] ?? '');
             $username = $account['username'] ?? '';
             $password = $account['password'] ?? '';
 
@@ -624,72 +653,100 @@ class PIRB_PmproHooks
                 }
             }
 
-            if ($user_id === 0 && !empty($username) && !empty($email) && !empty($password)) {
+            if ($user_id === 0 && !empty($email)) {
+                if (empty($username)) {
+                    $username = sanitize_user(current(explode('@', $email)));
+                }
+                if (username_exists($username)) {
+                    $username .= wp_rand(100, 999);
+                }
+                if (empty($password)) {
+                    $password = wp_generate_password();
+                }
                 $user_id = wp_create_user($username, $password, $email);
                 if (is_wp_error($user_id)) {
+                    error_log('[PIRB] handle_stripe_success: wp_create_user failed for ' . $email . ': ' . $user_id->get_error_message());
                     $user_id = 0;
                 }
             }
         }
 
-        if ($user_id > 0) {
-            if (!empty($councils)) {
-                update_user_meta($user_id, PIRB_META_KEY, array_map('sanitize_text_field', $councils));
-                update_user_meta($user_id, PIRB_META_ALLOWED, array_map('sanitize_text_field', $councils));
-            }
-            if (!empty($template)) {
-                update_user_meta($user_id, PIRB_META_TEMPLATE, $template);
-            }
-            if ($price > 0) {
-                update_user_meta($user_id, PIRB_META_PRICE, $price);
-            }
-
-            $pi_business = [];
-            if (!empty($business)) {
-                $field_map = [
-                    'pirb_company_name'    => 'company_name',
-                    'pirb_business_email'  => 'email',
-                    'pirb_business_phone'  => 'phone',
-                    'pirb_company_address' => 'company_address',
-                    'pirb_website'         => 'website',
-                    'pirb_vat_number'      => 'vat_number',
-                ];
-                foreach ($field_map as $bk => $pk) {
-                    if (isset($business[$bk]) && !empty($business[$bk])) {
-                        $pi_business[$pk] = $business[$bk];
-                    }
-                }
-                $pi_business['source'] = 'checkout';
-                update_user_meta($user_id, '_pi_business_info', $pi_business);
-            }
-
-            if (function_exists('pmpro_changeMembershipLevel')) {
-                pmpro_changeMembershipLevel($user_id, $level_id);
-            }
-
-            if (class_exists('MemberOrder')) {
-                $morder = new MemberOrder();
-                $morder->user_id = $user_id;
-                $morder->membership_id = $level_id;
-                $morder->InitialPayment = $price;
-                $morder->PaymentAmount = $price;
-                $morder->BillingPeriod = 'Month';
-                $morder->BillingFrequency = 1;
-                $morder->gateway = 'stripe';
-                $morder->status = 'success';
-                $morder->saveOrder();
-
-                if (!empty($session_id)) {
-                    update_user_meta($user_id, 'pmpro_stripe_customer_id', $session_id);
-                    $morder->subscription_transaction_id = $session_id;
-                }
-            }
-
-            do_action('pmpro_after_checkout', $user_id, $morder);
-
-            wp_set_current_user($user_id);
-            wp_set_auth_cookie($user_id, true);
+        if ($user_id <= 0) {
+            error_log('[PIRB] handle_stripe_success: user_id is 0 after creation attempt');
+            wp_safe_redirect(home_url('/membership-account/'));
+            exit;
         }
+
+        if (!empty($councils)) {
+            update_user_meta($user_id, PIRB_META_KEY, array_map('sanitize_text_field', $councils));
+            update_user_meta($user_id, PIRB_META_ALLOWED, array_map('sanitize_text_field', $councils));
+        }
+        if (!empty($region)) {
+            update_user_meta($user_id, PIRB_META_REGION, $region);
+        }
+        if (!empty($template)) {
+            update_user_meta($user_id, PIRB_META_TEMPLATE, $template);
+        }
+        if ($price > 0) {
+            update_user_meta($user_id, PIRB_META_PRICE, $price);
+        }
+
+        $pi_business = [];
+        if (!empty($business)) {
+            $field_map = [
+                'pirb_company_name'    => 'company_name',
+                'pirb_business_email'  => 'email',
+                'pirb_business_phone'  => 'phone',
+                'pirb_company_address' => 'company_address',
+                'pirb_website'         => 'website',
+                'pirb_vat_number'      => 'vat_number',
+            ];
+            foreach ($field_map as $bk => $pk) {
+                if (isset($business[$bk]) && !empty($business[$bk])) {
+                    $pi_business[$pk] = $business[$bk];
+                }
+            }
+            $pi_business['source'] = 'checkout';
+            if (!empty($template)) {
+                $pi_business['default_template'] = $template;
+            }
+            update_user_meta($user_id, '_pi_business_info', $pi_business);
+        }
+
+        // CRITICAL FIX: pmpro_changeMembershipLevel takes ($level_id, $user_id) — NOT ($user_id, $level_id)
+        $morder = null;
+        if (function_exists('pmpro_changeMembershipLevel')) {
+            pmpro_changeMembershipLevel($level_id, $user_id);
+        }
+
+        if (class_exists('MemberOrder')) {
+            $morder = new MemberOrder();
+            $morder->user_id = $user_id;
+            $morder->membership_id = $level_id;
+            $morder->InitialPayment = $price;
+            $morder->PaymentAmount = $price;
+            $morder->BillingPeriod = 'Month';
+            $morder->BillingFrequency = 1;
+            $morder->gateway = 'stripe';
+            $morder->status = 'success';
+            $morder->saveOrder();
+
+            if (!empty($stripe_session['customer'])) {
+                update_user_meta($user_id, 'pmpro_stripe_customer_id', $stripe_session['customer']);
+            }
+            if (!empty($stripe_session['subscription'])) {
+                $morder->subscription_transaction_id = $stripe_session['subscription'];
+                $morder->saveOrder();
+            }
+        }
+
+        do_action('pmpro_after_checkout', $user_id, $morder);
+
+        wp_set_current_user($user_id);
+        wp_set_auth_cookie($user_id, true);
+
+        // Mark as processed (idempotency guard for page refreshes)
+        set_transient($processed_flag, 1, 3600);
 
         if (!empty($transient_key)) {
             delete_transient($transient_key);
@@ -699,6 +756,8 @@ class PIRB_PmproHooks
             session_start();
         }
         unset($_SESSION[PIRB_SESSION_KEY]);
+
+        error_log('[PIRB] handle_stripe_success: success — user_id=' . $user_id . ' level=' . $level_id . ' price=' . $price);
 
         wp_safe_redirect(home_url('/membership-account/'));
         exit;

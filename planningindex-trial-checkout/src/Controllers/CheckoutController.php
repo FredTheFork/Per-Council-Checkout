@@ -58,12 +58,14 @@ class PIT_Checkout_Controller
 
         if (is_user_logged_in()) {
             $user_id = get_current_user_id();
+            error_log('[PIT] checkout: logged-in user ' . $user_id);
         } else {
             $username = isset($data['username']) ? sanitize_user($data['username']) : '';
             $email     = isset($data['email']) ? sanitize_email($data['email']) : '';
             $password  = isset($data['password']) ? $data['password'] : '';
 
             if (empty($username) || empty($email) || empty($password)) {
+                error_log('[PIT] checkout: missing account credentials');
                 return new WP_REST_Response([
                     'success' => false,
                     'message' => 'Account details are required to start your free trial.',
@@ -71,6 +73,7 @@ class PIT_Checkout_Controller
             }
 
             if (username_exists($username)) {
+                error_log('[PIT] checkout: username already exists: ' . $username);
                 return new WP_REST_Response([
                     'success' => false,
                     'message' => 'That username is already taken. Please choose another.',
@@ -78,6 +81,7 @@ class PIT_Checkout_Controller
             }
 
             if (email_exists($email)) {
+                error_log('[PIT] checkout: email already exists: ' . $email);
                 return new WP_REST_Response([
                     'success' => false,
                     'message' => 'That email address is already registered. Please log in instead.',
@@ -86,6 +90,7 @@ class PIT_Checkout_Controller
 
             $user_id = wp_create_user($username, $password, $email);
             if (is_wp_error($user_id)) {
+                error_log('[PIT] checkout: wp_create_user failed for ' . $email . ': ' . $user_id->get_error_message());
                 return new WP_REST_Response([
                     'success' => false,
                     'message' => $user_id->get_error_message(),
@@ -93,6 +98,7 @@ class PIT_Checkout_Controller
             }
 
             $is_new_user = true;
+            error_log('[PIT] checkout: created new user ' . $user_id . ' (' . $email . ')');
 
             // Set display name
             wp_update_user([
@@ -107,7 +113,10 @@ class PIT_Checkout_Controller
 
         // ── Grant the PMPro trial membership level ────────────────────
         if (function_exists('pmpro_changeMembershipLevel')) {
-            pmpro_changeMembershipLevel($level_id, $user_id);
+            $level_changed = pmpro_changeMembershipLevel($level_id, $user_id);
+            error_log('[PIT] checkout: pmpro_changeMembershipLevel(' . $level_id . ', ' . $user_id . ') returned: ' . var_export($level_changed, true));
+        } else {
+            error_log('[PIT] checkout: pmpro_changeMembershipLevel function not available');
         }
 
         // ── Save user meta: councils, template, business, trial markers ─
@@ -154,6 +163,8 @@ class PIT_Checkout_Controller
 
         // ── Build the redirect URL ────────────────────────────────────
         $redirect_url = home_url('/membership-account/?pit_trial_started=1');
+
+        error_log('[PIT] checkout: success — user_id=' . $user_id . ' level=' . $level_id . ' councils=' . count($councils) . ' redirect=' . $redirect_url);
 
         $plan_name = 'Planning Index Free Trial';
         if (function_exists('pmpro_getLevel') && $level_id > 0) {
