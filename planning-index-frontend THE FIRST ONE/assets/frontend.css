@@ -942,7 +942,8 @@
 }
 
 /* ==================== MODAL ==================== */
-.pi-modal-overlay {
+#pi-search .pi-modal-overlay,
+#pi-save-modal.pi-modal-overlay {
   position: fixed !important;
   top: 0 !important;
   left: 0 !important;
@@ -951,32 +952,32 @@
   width: 100% !important;
   height: 100% !important;
   min-height: 100vh !important;
-  min-height: 100dvh !important;      /* dynamic viewport height for mobile */
+  min-height: 100dvh !important;
   margin: 0 !important;
   padding: 0 !important;
-  background: rgba(15, 23, 42, 0.6);  /* semi-transparent navy overlay */
+  background: rgba(15, 23, 42, 0.6);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   z-index: 999999 !important;
-  display: none;                      /* hidden by default, shown via JS */
+  display: none;
   align-items: center;
   justify-content: center;
   visibility: hidden;
   opacity: 0;
   transition: opacity 0.25s ease, visibility 0.25s ease;
-  overflow: hidden;                   /* prevent scroll on overlay itself */
+  overflow: hidden;
   box-sizing: border-box;
 }
 
-/* When overlay is shown — controlled solely by .open class */
-.pi-modal-overlay.open {
+#pi-search .pi-modal-overlay.open,
+#pi-save-modal.pi-modal-overlay.open {
   display: flex !important;
   visibility: visible;
   opacity: 1;
 }
 
-/* The modal box itself - absolutely centered */
-.pi-modal {
+#pi-search .pi-modal,
+#pi-save-modal .pi-modal {
   position: fixed !important;
   top: 50% !important;
   left: 50% !important;
@@ -984,7 +985,7 @@
   width: calc(100% - 2rem);
   max-width: 640px;
   max-height: calc(100vh - 2rem);
-  max-height: calc(100dvh - 2rem);    /* dynamic viewport for mobile */
+  max-height: calc(100dvh - 2rem);
   margin: 0 !important;
   background: var(--pi-card-bg);
   border-radius: var(--pi-radius-lg);
@@ -2152,4 +2153,45 @@
     border-radius: 7000px;
     margin-bottom: 6px;
     line-height: 1;
+}
+
+/* ==================== SAVE SEARCH ERROR ==================== */
+.pi-save-error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--pi-radius-sm);
+  font-size: 0.8125rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+/* ==================== TOAST NOTIFICATION ==================== */
+.pi-toast {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--pi-navy, #1e293b);
+  color: #fff;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--pi-radius-lg, 12px);
+  box-shadow: var(--pi-shadow-xl, 0 20px 25px -5px rgba(0,0,0,0.25));
+  font-size: 0.875rem;
+  font-weight: 500;
+  z-index: 1000001 !important;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+  pointer-events: none;
+  max-width: calc(100% - 2rem);
+  text-align: center;
+}
+
+.pi-toast.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
 }

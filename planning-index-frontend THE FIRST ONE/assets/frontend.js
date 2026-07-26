@@ -63,6 +63,18 @@
     return tmp.textContent || tmp.innerText || '';
   }
 
+  function showToast(msg) {
+    let $toast = $('#pi-toast');
+    if (!$toast.length) {
+      $toast = $('<div id="pi-toast" class="pi-toast"></div>').appendTo('body');
+    }
+    $toast.text(msg).addClass('show');
+    clearTimeout(window._piToastTimer);
+    window._piToastTimer = setTimeout(function() {
+      $toast.removeClass('show');
+    }, 2500);
+  }
+
   // -------------------------------
   // Postcode Extraction
   // -------------------------------
@@ -1567,6 +1579,9 @@
         }
       });
 
+      // Safety: force-close any stale save modal on startup
+      $('#pi-save-modal').removeClass('open').css('display', '');
+
       // Initial search
       search(true);
     }
@@ -1584,17 +1599,18 @@
       }
     });
 
-    // Prevent modal content click from closing
-    $('.pi-modal').on('click', function(e) {
+    // Prevent DETAILS modal content click from closing (scoped to #pi-modal only)
+    $('#pi-modal .pi-modal').on('click', function(e) {
       e.stopPropagation();
     });
 
-    // ESC to close modal
+    // ESC to close modals and dropdowns
     $(document).on('keydown', function(e) {
       if (e.key === 'Escape') {
         closeModal();
         $('#pi-save-modal').removeClass('open');
         $('#pi-saved-dropdown').removeClass('open');
+        closeMyAppsPanel();
       }
     });
 
@@ -1630,10 +1646,21 @@
     // Save confirm
     $('#pi-save-confirm').on('click', function() {
       const name = $('#pi-save-name').val().trim();
-      if (name) {
-        saveSearch(name, getCurrentFilters());
-        $('#pi-save-modal').removeClass('open');
+      const $err = $('#pi-save-error');
+      if (!name) {
+        if ($err.length) $err.text('Please enter a name for this search.').show();
+        $('#pi-save-name').focus();
+        return;
       }
+      if ($err.length) $err.hide();
+      saveSearch(name, getCurrentFilters());
+      $('#pi-save-modal').removeClass('open');
+      showToast('Search "' + name + '" saved');
+    });
+
+    // Clear error when typing
+    $('#pi-save-name').on('input', function() {
+      $('#pi-save-error').hide();
     });
 
     // Click on saved-searches wrapper: stop propagation so the document handler doesn't close the dropdown
