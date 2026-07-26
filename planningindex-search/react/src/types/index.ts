@@ -53,6 +53,27 @@ export interface SearchFilters {
   app_category?: number
   date_from?: string
   date_to?: string
+  highValueOnly?: boolean
+  constructionOnly?: boolean
+}
+
+export type QuickFilterId =
+  | 'this_week'
+  | 'this_month'
+  | 'extensions'
+  | 'new_builds'
+  | 'windows_doors'
+  | 'roofing'
+  | 'garage_outbuilding'
+  | 'high_value'
+  | 'construction'
+
+export interface QuickFilterDef {
+  id: QuickFilterId
+  label: string
+  type: 'date' | 'keyword' | 'toggle'
+  keyword?: string
+  days?: number
 }
 
 export type SortOption = 'date_desc' | 'date_asc' | 'alpha_asc' | 'alpha_desc'

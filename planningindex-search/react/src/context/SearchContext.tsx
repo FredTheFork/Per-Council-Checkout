@@ -18,10 +18,12 @@ import {
   trackView,
   addToWorkspace,
 } from '../api'
+import { isHighValue, isConstructionJob } from '../utils'
 import type {
   ApiError,
   Authority,
   PlanningApp,
+  QuickFilterId,
   SearchFilters,
   SortOption,
   ViewMode,
@@ -29,9 +31,11 @@ import type {
 
 export interface SearchState {
   filters: SearchFilters
+  activeQuickFilter: QuickFilterId | null
   sort: SortOption
   view: ViewMode
   apps: PlanningApp[]
+  rawApps: PlanningApp[]
   total: number
   totalPages: number
   page: number
@@ -51,6 +55,9 @@ export interface SearchContextValue extends SearchState {
   loadMore: () => Promise<void>
   setFilters: (partial: Partial<SearchFilters>) => void
   clearFilters: () => void
+  setQuickFilter: (id: QuickFilterId | null) => void
+  toggleHighValue: () => void
+  toggleConstruction: () => void
   setSort: (sort: SortOption) => void
   switchView: (view: ViewMode) => void
   saveApp: (id: number) => Promise<void>
@@ -67,11 +74,24 @@ const DEFAULT_SORT: SortOption = 'date_desc'
 const DEFAULT_VIEW: ViewMode = 'grid'
 const DEFAULT_PER_PAGE = 40
 
+function applyClientFilters(apps: PlanningApp[], filters: SearchFilters): PlanningApp[] {
+  let out = apps
+  if (filters.highValueOnly) {
+    out = out.filter((a) => isHighValue(a.meta))
+  }
+  if (filters.constructionOnly) {
+    out = out.filter((a) => isConstructionJob(a.meta))
+  }
+  return out
+}
+
 export function SearchProvider({ children }: { children: ReactNode }) {
   const [filters, setFiltersState] = useState<SearchFilters>(DEFAULT_FILTERS)
+  const [activeQuickFilter, setActiveQuickFilter] = useState<QuickFilterId | null>(null)
   const [sort, setSortState] = useState<SortOption>(DEFAULT_SORT)
   const [view, setView] = useState<ViewMode>(DEFAULT_VIEW)
   const [apps, setApps] = useState<PlanningApp[]>([])
+  const [rawApps, setRawApps] = useState<PlanningApp[]>([])
   const [total, setTotal] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
   const [page, setPage] = useState(1)
@@ -111,7 +131,8 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     try {
       const result = await fetchApps(filtersRef.current, 1, DEFAULT_PER_PAGE, controller.signal)
       if (controller.signal.aborted) return
-      setApps(result.apps)
+      setRawApps(result.apps)
+      setApps(applyClientFilters(result.apps, filtersRef.current))
       setTotal(result.total)
       setTotalPages(result.totalPages)
     } catch (err) {
@@ -128,7 +149,11 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     setLoading(true)
     try {
       const result = await fetchApps(filtersRef.current, nextPage, DEFAULT_PER_PAGE)
-      setApps((prev) => [...prev, ...result.apps])
+      setRawApps((prev) => {
+        const next = [...prev, ...result.apps]
+        setApps(applyClientFilters(next, filtersRef.current))
+        return next
+      })
       setPage(nextPage)
       pageRef.current = nextPage
     } catch (err) {
@@ -143,7 +168,25 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   }
 
   const clearFilters = (): void => {
+    setActiveQuickFilter(null)
     setFiltersState(DEFAULT_FILTERS)
+    void runSearch()
+  }
+
+  const setQuickFilter = (id: QuickFilterId | null): void => {
+    setActiveQuickFilter(id)
+  }
+
+  const toggleHighValue = (): void => {
+    const next = !filters.highValueOnly
+    setFiltersState((prev) => ({ ...prev, highValueOnly: next }))
+    setApps(applyClientFilters(rawApps, { ...filtersRef.current, highValueOnly: next }))
+  }
+
+  const toggleConstruction = (): void => {
+    const next = !filters.constructionOnly
+    setFiltersState((prev) => ({ ...prev, constructionOnly: next }))
+    setApps(applyClientFilters(rawApps, { ...filtersRef.current, constructionOnly: next }))
   }
 
   const setSort = (newSort: SortOption): void => {
@@ -254,9 +297,11 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const value = useMemo<SearchContextValue>(
     () => ({
       filters,
+      activeQuickFilter,
       sort,
       view,
       apps,
+      rawApps,
       total,
       totalPages,
       page,
@@ -273,6 +318,9 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       loadMore,
       setFilters,
       clearFilters,
+      setQuickFilter,
+      toggleHighValue,
+      toggleConstruction,
       setSort,
       switchView,
       saveApp: saveAppAction,
@@ -282,7 +330,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       refreshSavedState,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [filters, sort, view, apps, total, totalPages, page, perPage, loading, loadingMap, error, savedIds, recentIds, workspaceIds, allowedAuthorities, mapApps],
+    [filters, activeQuickFilter, sort, view, apps, rawApps, total, totalPages, page, perPage, loading, loadingMap, error, savedIds, recentIds, workspaceIds, allowedAuthorities, mapApps],
   )
 
   return <SearchContext.Provider value={value}>{children}</SearchContext.Provider>

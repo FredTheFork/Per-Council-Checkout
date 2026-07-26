@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Search, MapPin, Shield, User, KeyRound, Building2, Loader as Loader2 } from 'lucide-react'
+import { Search, User, Loader as Loader2, SlidersHorizontal, LogIn } from 'lucide-react'
 import type { PlanningIndexSearchConfig } from './types'
+import { useSearchContext } from './context/SearchContext'
+import SearchHeader from './components/SearchHeader'
 
 export default function App() {
   const [config, setConfig] = useState<PlanningIndexSearchConfig | null>(null)
@@ -53,113 +55,100 @@ export default function App() {
         </div>
       </header>
 
+      {/* Sticky search header */}
+      <SearchHeader />
+
       {/* Main content */}
-      <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="card mx-auto max-w-2xl p-8">
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent-100">
-              <Search className="h-6 w-6 text-accent-600" strokeWidth={2} />
-            </div>
-            <div>
-              <h2 className="font-display text-xl font-bold text-brand-600">
-                Search Renovation in Progress
-              </h2>
-              <p className="text-sm text-slate-500">
-                Stage 1: Plugin Foundation &amp; Build Pipeline
-              </p>
-            </div>
-          </div>
-
-          <p className="mb-8 text-sm leading-relaxed text-slate-600">
-            The new React-based search interface is being built. This placeholder
-            confirms that the plugin foundation, build pipeline, and config
-            injection are all working correctly. The full search UI will replace
-            this placeholder in the next stage.
-          </p>
-
-          {/* Config debug panel */}
-          <div className="rounded-xl bg-slate-50 p-5 ring-1 ring-slate-200">
-            <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-brand-600">
-              <Shield className="h-4 w-4" />
-              Configuration Pipeline Verified
-            </h3>
-            <dl className="space-y-3 text-sm">
-              <ConfigRow
-                icon={<Search className="h-4 w-4 text-slate-400" />}
-                label="REST API Base"
-                value={config?.restBase ?? 'Not found'}
-                mono
-              />
-              <ConfigRow
-                icon={<KeyRound className="h-4 w-4 text-slate-400" />}
-                label="WP REST Nonce"
-                value={config?.nonce ? `${config.nonce.substring(0, 12)}…` : 'Missing'}
-                mono
-              />
-              <ConfigRow
-                icon={<MapPin className="h-4 w-4 text-slate-400" />}
-                label="Mapbox Token"
-                value={config?.mapboxToken ? `${config.mapboxToken.substring(0, 8)}…` : 'Not configured'}
-                mono
-              />
-              <ConfigRow
-                icon={<User className="h-4 w-4 text-slate-400" />}
-                label="Logged In"
-                value={config?.isLoggedIn ? 'Yes' : 'No'}
-              />
-              <ConfigRow
-                icon={<User className="h-4 w-4 text-slate-400" />}
-                label="User ID"
-                value={String(config?.userId ?? 0)}
-                mono
-              />
-              <ConfigRow
-                icon={<Shield className="h-4 w-4 text-slate-400" />}
-                label="Admin"
-                value={config?.isAdmin ? 'Yes' : 'No'}
-              />
-              <ConfigRow
-                icon={<Building2 className="h-4 w-4 text-slate-400" />}
-                label="Allowed Authorities"
-                value={
-                  config?.allowedAuthorities?.length
-                    ? `${config.allowedAuthorities.length} councils`
-                    : 'All (admin or unscoped)'
-                }
-              />
-            </dl>
-          </div>
-
-          <div className="mt-6 flex items-center gap-2 text-xs text-slate-400">
-            <span className="h-2 w-2 rounded-full bg-success-500" />
-            Plugin v{config?.version ?? '1.0.0'} — React + Vite + TypeScript + Tailwind
-          </div>
-        </div>
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <ResultsPlaceholder />
       </main>
     </div>
   )
 }
 
-function ConfigRow({
-  icon,
-  label,
-  value,
-  mono = false,
-}: {
-  icon: React.ReactNode
-  label: string
-  value: string
-  mono?: boolean
-}) {
+function ResultsPlaceholder() {
+  const { apps, total, loading, error, filters, activeQuickFilter } = useSearchContext()
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16 text-slate-500">
+        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+        <span className="text-sm font-medium">Searching…</span>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="mx-auto max-w-md rounded-xl border border-error-200 bg-error-50 p-6 text-center">
+        <p className="text-sm font-medium text-error-700">
+          Something went wrong loading results.
+        </p>
+        <p className="mt-1 text-xs text-error-600">{error.message}</p>
+      </div>
+    )
+  }
+
+  if (apps.length === 0) {
+    return (
+      <div className="mx-auto max-w-md py-16 text-center">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
+          <SlidersHorizontal className="h-6 w-6 text-slate-400" />
+        </div>
+        <h3 className="text-base font-semibold text-slate-700">No applications found</h3>
+        <p className="mt-1 text-sm text-slate-500">
+          Try adjusting your search or filters.
+        </p>
+      </div>
+    )
+  }
+
   return (
-    <div className="flex items-center justify-between gap-4">
-      <dt className="flex items-center gap-2 text-slate-500">
-        {icon}
-        {label}
-      </dt>
-      <dd className={mono ? 'font-mono text-xs text-slate-700' : 'text-slate-700'}>
-        {value}
-      </dd>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-slate-600">
+          <span className="font-semibold text-slate-900">{total}</span> application{total !== 1 ? 's' : ''}
+          {filters.search && (
+            <>
+              {' '}for <span className="font-medium text-slate-900">"{filters.search}"</span>
+            </>
+          )}
+          {activeQuickFilter && (
+            <span className="ml-2 inline-flex items-center rounded-full bg-accent-100 px-2.5 py-0.5 text-xs font-medium text-accent-700">
+              {activeQuickFilter.replace('_', ' ')}
+            </span>
+          )}
+          {filters.highValueOnly && (
+            <span className="ml-2 inline-flex items-center rounded-full bg-success-100 px-2.5 py-0.5 text-xs font-medium text-success-700">
+              High Value
+            </span>
+          )}
+          {filters.constructionOnly && (
+            <span className="ml-2 inline-flex items-center rounded-full bg-brand-100 px-2.5 py-0.5 text-xs font-medium text-brand-700">
+              Construction
+            </span>
+          )}
+        </p>
+        <span className="text-xs text-slate-400">Results grid coming in Stage 5</span>
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {apps.slice(0, 9).map((app) => (
+          <div
+            key={app.id}
+            className="card p-5"
+          >
+            <p className="text-xs font-semibold uppercase tracking-wide text-accent-600">
+              {app._authority_name || 'Unknown council'}
+            </p>
+            <h4 className="mt-2 line-clamp-2 text-sm font-semibold text-slate-900">
+              {app.title.rendered}
+            </h4>
+            <p className="mt-1 line-clamp-1 text-xs text-slate-500">
+              {app.meta.address || 'No address'}
+            </p>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
