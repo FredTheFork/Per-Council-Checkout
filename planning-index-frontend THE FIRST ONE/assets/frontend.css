@@ -942,7 +942,7 @@
 }
 
 /* ==================== MODAL ==================== */
-#pi-search .pi-modal-overlay,
+#pi-modal.pi-modal-overlay,
 #pi-save-modal.pi-modal-overlay {
   position: fixed !important;
   top: 0 !important;
@@ -969,14 +969,14 @@
   box-sizing: border-box;
 }
 
-#pi-search .pi-modal-overlay.open,
+#pi-modal.pi-modal-overlay.open,
 #pi-save-modal.pi-modal-overlay.open {
   display: flex !important;
   visibility: visible;
   opacity: 1;
 }
 
-#pi-search .pi-modal,
+#pi-modal .pi-modal,
 #pi-save-modal .pi-modal {
   position: fixed !important;
   top: 50% !important;

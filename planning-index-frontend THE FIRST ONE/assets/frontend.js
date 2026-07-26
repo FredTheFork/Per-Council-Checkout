@@ -1579,8 +1579,9 @@
         }
       });
 
-      // Safety: force-close any stale save modal on startup
+      // Safety: force-close any stale modals on startup
       $('#pi-save-modal').removeClass('open').css('display', '');
+      $('#pi-modal').removeClass('open').css('display', '');
 
       // Initial search
       search(true);
