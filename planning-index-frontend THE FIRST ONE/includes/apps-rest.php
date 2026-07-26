@@ -10,7 +10,7 @@
  * Query params:
  *   page        (int)    page number, default 1
  *   per_page    (int)    results per page, default 40, max 100
- *   search      (string) keyword search across title + content + address meta
+ *   search      (string) keyword search across title + content (OR algorithm)
  *   authority   (string) comma-separated authority term IDs to filter by
  *   app_category(string) app_category term ID to filter by
  *   date_from   (string) YYYY-MM-DD – filter by date_received >= this
@@ -185,11 +185,30 @@ function pi_apps_rest_callback(WP_REST_Request $request) {
         $args['meta_query'] = [$meta_q];
     }
 
-    // Keyword search across title + content + address meta
+    // Keyword search across title + content (OR algorithm)
+    // "window door" → matches posts containing "window" OR "door"
     $search = $request->get_param('search');
+    $pi_or_search_filter = null;
     if (!empty($search)) {
-        // Use 's' for title/content search; address is in post_content (description) too
-        $args['s'] = sanitize_text_field($search);
+        $keywords = preg_split('/\s+/', trim(sanitize_text_field($search)));
+        $keywords = array_filter($keywords, function($k) { return strlen($k) >= 2; });
+        if (!empty($keywords)) {
+            global $wpdb;
+            $like_conditions = [];
+            foreach ($keywords as $kw) {
+                $like = '%' . $wpdb->esc_like($kw) . '%';
+                $like_conditions[] = $wpdb->prepare(
+                    "({$wpdb->posts}.post_title LIKE %s OR {$wpdb->posts}.post_content LIKE %s)",
+                    $like, $like
+                );
+            }
+            $where_clause = '(' . implode(' OR ', $like_conditions) . ')';
+
+            $pi_or_search_filter = function($where) use ($where_clause) {
+                return $where . ' AND ' . $where_clause;
+            };
+            add_filter('posts_where', $pi_or_search_filter);
+        }
     }
 
     // Default ordering: date_received desc, then post_date desc
@@ -199,6 +218,12 @@ function pi_apps_rest_callback(WP_REST_Request $request) {
 
     // ── RUN QUERY ────────────────────────────────────────────────────────────
     $query = new WP_Query($args);
+
+    // Remove the filter immediately so it doesn't leak into other queries
+    if ($pi_or_search_filter) {
+        remove_filter('posts_where', $pi_or_search_filter);
+    }
+
     $total = (int) $query->found_posts;
     $total_pages = (int) $query->max_num_pages ?: 1;
 

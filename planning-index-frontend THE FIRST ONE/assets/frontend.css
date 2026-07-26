@@ -203,10 +203,14 @@
   border-radius: 10px;
   text-align: center;
   line-height: 20px;
+  vertical-align: middle;
+  margin-left: 6px;
 }
 
 .pi-filter-count.visible {
-  display: inline-block;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
 }
 
 .pi-filters {
@@ -829,44 +833,146 @@
 
 .pi-skeleton-card {
   background: var(--pi-card-bg);
-  border: 1px solid var(--pi-border);
+  border: 1px solid var(--pi-border-light);
   border-radius: var(--pi-radius);
-  padding: 20px;
+  padding: 24px;
   min-height: 280px;
+  overflow: hidden;
+  position: relative;
 }
 
-.pi-skel-title,
-.pi-skel-meta,
-.pi-skel-desc,
-.pi-skel-actions {
-  background: linear-gradient(90deg, var(--pi-border-light) 25%, var(--pi-border) 50%, var(--pi-border-light) 75%);
+.pi-skeleton-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--pi-accent), transparent);
   background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-  border-radius: 6px;
+  animation: shimmer-bar 2s ease-in-out infinite;
+}
+
+@keyframes shimmer-bar {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.pi-skel-council {
+  height: 12px;
+  width: 35%;
+  margin-bottom: 14px;
+  border-radius: 4px;
+  background: linear-gradient(
+    100deg,
+    var(--pi-border-light) 30%,
+    var(--pi-hover-bg) 50%,
+    var(--pi-border-light) 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
 }
 
 .pi-skel-title {
-  height: 20px;
-  width: 80%;
-  margin-bottom: 16px;
+  height: 22px;
+  width: 85%;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  background: linear-gradient(
+    100deg,
+    var(--pi-border-light) 30%,
+    var(--pi-hover-bg) 50%,
+    var(--pi-border-light) 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+.pi-skel-title-line2 {
+  height: 22px;
+  width: 55%;
+  margin-bottom: 18px;
+  border-radius: 6px;
+  background: linear-gradient(
+    100deg,
+    var(--pi-border-light) 30%,
+    var(--pi-hover-bg) 50%,
+    var(--pi-border-light) 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
 }
 
 .pi-skel-meta {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.pi-skel-meta-item {
   height: 14px;
-  width: 60%;
-  margin-bottom: 12px;
+  width: 90px;
+  border-radius: 4px;
+  background: linear-gradient(
+    100deg,
+    var(--pi-border-light) 30%,
+    var(--pi-hover-bg) 50%,
+    var(--pi-border-light) 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+.pi-skel-meta-item:nth-child(2) {
+  width: 110px;
+  animation-delay: 0.15s;
 }
 
 .pi-skel-desc {
-  height: 60px;
-  width: 100%;
-  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
 }
 
-.pi-skel-actions {
-  height: 40px;
-  width: 100%;
+.pi-skel-desc-line {
+  height: 13px;
+  border-radius: 4px;
+  background: linear-gradient(
+    100deg,
+    var(--pi-border-light) 30%,
+    var(--pi-hover-bg) 50%,
+    var(--pi-border-light) 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
 }
+
+.pi-skel-desc-line:nth-child(1) { width: 100%; animation-delay: 0.05s; }
+.pi-skel-desc-line:nth-child(2) { width: 92%; animation-delay: 0.1s; }
+.pi-skel-desc-line:nth-child(3) { width: 78%; animation-delay: 0.15s; }
+.pi-skel-desc-line:nth-child(4) { width: 60%; animation-delay: 0.2s; }
+
+.pi-skel-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.pi-skel-btn {
+  height: 38px;
+  border-radius: var(--pi-radius-sm);
+  background: linear-gradient(
+    100deg,
+    var(--pi-border-light) 30%,
+    var(--pi-hover-bg) 50%,
+    var(--pi-border-light) 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+.pi-skel-btn:nth-child(1) { width: 120px; }
+.pi-skel-btn:nth-child(2) { width: 100px; animation-delay: 0.1s; }
 
 @keyframes shimmer {
   0% { background-position: 200% 0; }
@@ -1764,6 +1870,8 @@
   min-width: 320px !important;
   height: 100vh !important;
   height: 100dvh !important;
+  max-height: 100vh !important;
+  max-height: 100dvh !important;
   background: var(--pi-card-bg) !important;
   box-shadow: -8px 0 32px rgba(15, 23, 42, 0.15) !important;
   z-index: 999999 !important;
@@ -1772,6 +1880,11 @@
   transform: translateX(100%) !important;
   transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1) !important;
   overflow: hidden;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  border-radius: 0 !important;
 }
 
 .pi-sidebar.open {

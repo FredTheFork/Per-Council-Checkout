@@ -499,6 +499,7 @@
   function updateFilterCount() {
     const filters = getCurrentFilters();
     let count = 0;
+    if (filters.keyword && filters.keyword.trim()) count++;
     if (filters.authority && filters.authority.length > 0) count++;
     if (filters.category) count++;
     if (filters.dateFrom) count++;
@@ -506,9 +507,9 @@
     
     const $count = $('#pi-filter-count');
     if (count > 0) {
-      $count.text(count).addClass('visible');
+      $count.text(count).addClass('visible').css('display', 'inline-flex');
     } else {
-      $count.removeClass('visible');
+      $count.text('').removeClass('visible').css('display', 'none');
     }
   }
 
