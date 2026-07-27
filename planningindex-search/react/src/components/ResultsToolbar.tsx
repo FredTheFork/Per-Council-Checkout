@@ -109,7 +109,7 @@ export default function ResultsToolbar({ apps, loading }: ResultsToolbarProps) {
       }`}
       style={{ top: 'var(--pi-header-height, 0px)' }}
     >
-      <div className="mx-auto max-w-7xl px-4 py-1.5 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1600px] px-4 py-1.5 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
           {/* Left cluster: count + filter chips */}
           <div className="flex flex-wrap items-center gap-2">
@@ -196,7 +196,7 @@ export default function ResultsToolbar({ apps, loading }: ResultsToolbarProps) {
           </div>
 
           {/* Right cluster: controls */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-nowrap items-center gap-1.5 shrink-0">
             {showSelectionControls && (
               <SelectAllCheckbox apps={apps} />
             )}

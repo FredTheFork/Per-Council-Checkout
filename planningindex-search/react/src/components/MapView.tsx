@@ -453,7 +453,7 @@ export default function MapView() {
   }, [showHeatmap, mapReady])
 
   // ── Popup rendering ─────────────────────────────────────────────────
-  const closePopup = useCallback(() => {
+  const cleanupPopupDOM = useCallback(() => {
     if (popupRef.current) {
       popupRef.current.remove()
       popupRef.current = null
@@ -462,9 +462,13 @@ export default function MapView() {
       try { popupRootRef.current.unmount() } catch { /* noop */ }
       popupRootRef.current = null
     }
+  }, [])
+
+  const closePopup = useCallback(() => {
+    cleanupPopupDOM()
     setPopupApp(null)
     setPopupCoords(null)
-  }, [])
+  }, [cleanupPopupDOM])
 
   useEffect(() => {
     if (!mapReady || !mapInstanceRef.current) return
@@ -474,7 +478,7 @@ export default function MapView() {
     }
 
     const map = mapInstanceRef.current
-    closePopup()
+    cleanupPopupDOM()
 
     const container = document.createElement('div')
     const popup = new mapboxgl.Popup({
