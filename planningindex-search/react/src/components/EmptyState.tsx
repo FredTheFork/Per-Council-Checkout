@@ -12,13 +12,15 @@ export default function EmptyState() {
   }
 
   return (
-    <div className="mx-auto max-w-md py-20 text-center">
-      <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
-        <SearchX className="h-8 w-8 text-slate-400" />
-      </div>
-      <h3 className="text-lg font-semibold text-slate-700">No applications found</h3>
-      <p className="mt-2 text-sm text-slate-500">
-        Try adjusting your search or filters to find what you're looking for.
+    <div className="mx-auto max-w-md py-24 text-center">
+      <SearchX className="mx-auto h-10 w-10 text-slate-300" strokeWidth={1.5} />
+      <h3 className="mt-4 text-base font-semibold text-slate-700">
+        No applications found
+      </h3>
+      <p className="mt-1.5 text-sm text-slate-500">
+        {hasFilters
+          ? 'Try adjusting your search or filters to find what you need.'
+          : 'There are no planning applications to display.'}
       </p>
       {hasFilters && (
         <button

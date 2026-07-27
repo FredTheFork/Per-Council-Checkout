@@ -7,7 +7,6 @@ import {
   Eye,
   Calendar,
   Hash,
-  PoundSterling,
 } from 'lucide-react'
 import type { PlanningApp } from '../types'
 import {
@@ -100,12 +99,6 @@ export default function AppCard({
     }
   }, [onViewDetails, onToggleSelect, app, onKeyDown, index])
 
-  const freshnessChipColor = freshness === 'New today'
-    ? 'bg-success-100 text-success-700'
-    : freshness === 'This week'
-      ? 'bg-accent-100 text-accent-700'
-      : 'bg-slate-100 text-slate-600'
-
   const ariaLabel = [
     councilName,
     address,
@@ -121,17 +114,13 @@ export default function AppCard({
       onKeyDown={handleKeyDown}
       role="article"
       aria-label={ariaLabel}
-      className={`card group relative flex flex-col overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-elevated focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${
-        selected ? 'ring-2 ring-brand-500' : ''
+      className={`card group relative flex flex-col overflow-hidden transition-shadow duration-200 hover:shadow-elevated focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 ${
+        selected ? 'ring-2 ring-accent-500' : ''
       }`}
     >
-      {/* High-value ribbon */}
-      {highValue && (
-        <div className="absolute right-0 top-0 z-10">
-          <div className="bg-accent-500 px-3 py-1 text-xs font-bold text-white shadow-soft">
-            High Value
-          </div>
-        </div>
+      {/* Selection indicator bar */}
+      {selected && (
+        <div className="absolute left-0 top-0 h-full w-1 bg-accent-500" />
       )}
 
       {/* Checkbox */}
@@ -143,7 +132,7 @@ export default function AppCard({
             type="checkbox"
             checked={selected}
             onChange={() => onToggleSelect(app.id)}
-            className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+            className="h-4 w-4 rounded border-slate-300 text-accent-600 focus:ring-accent-500"
             aria-label={`Select ${address}`}
           />
         </label>
@@ -152,38 +141,46 @@ export default function AppCard({
       <div className="flex flex-1 flex-col p-5">
         {/* Council + lead score */}
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wide text-accent-600 line-clamp-1">
+          <span className="text-xs font-medium uppercase tracking-wide text-slate-500 line-clamp-1">
             {councilName}
           </span>
           <span
-            className={`inline-flex h-2.5 w-2.5 flex-shrink-0 rounded-full ${tierColor.dot}`}
+            className={`inline-flex h-2 w-2 flex-shrink-0 rounded-full ${tierColor.dot}`}
             title={`${tierColor.label}, score ${score}`}
             aria-label={`${tierColor.label}, score ${score}`}
           />
         </div>
 
         {/* Address (title) */}
-        <h3 className="mt-2 line-clamp-2 text-base font-semibold text-slate-900">
+        <h3 className="mt-1.5 line-clamp-2 text-base font-semibold text-slate-900">
           {address}
         </h3>
 
-        {/* Value badge + freshness chip */}
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        {/* Value + freshness + high-value tag */}
+        <div className="mt-2.5 flex flex-wrap items-center gap-2">
           {estPrice && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-brand-600 px-3 py-1 text-sm font-bold text-white">
-              <PoundSterling className="h-3.5 w-3.5" />
+            <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-semibold ${
+              highValue ? 'bg-brand-700 text-white' : 'bg-slate-100 text-slate-700'
+            }`}>
               {estPrice}
             </span>
           )}
+          {highValue && !estPrice && (
+            <span className="badge bg-brand-700 text-white">High Value</span>
+          )}
           {freshness && (
-            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${freshnessChipColor}`}>
+            <span className={`badge ${
+              freshness === 'New today'
+                ? 'bg-accent-50 text-accent-700'
+                : 'bg-slate-100 text-slate-600'
+            }`}>
               {freshness}
             </span>
           )}
         </div>
 
         {/* Meta row */}
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
           {dateReceived && (
             <span className="inline-flex items-center gap-1">
               <Calendar className="h-3.5 w-3.5" />
@@ -200,7 +197,7 @@ export default function AppCard({
 
         {/* Description */}
         {description && (
-          <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-slate-600">
+          <p className="mt-2.5 line-clamp-3 text-sm leading-relaxed text-slate-600">
             {description}
           </p>
         )}
@@ -209,17 +206,17 @@ export default function AppCard({
         <div className="flex-1" />
 
         {/* Action row */}
-        <div className="mt-4 flex items-center gap-2 border-t border-slate-100 pt-3">
+        <div className="mt-4 flex items-center gap-1 border-t border-slate-100 pt-3">
           <button
             type="button"
             onClick={handleSave}
             disabled={savePending}
-            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 active:scale-95 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 disabled:opacity-50"
             aria-label={saved ? `Unsave ${address}` : `Save ${address}`}
             title={saved ? 'Saved' : 'Save'}
           >
             {saved ? (
-              <BookmarkCheck className="h-4 w-4 text-brand-600" />
+              <BookmarkCheck className="h-4 w-4 text-accent-600" />
             ) : (
               <Bookmark className="h-4 w-4" />
             )}
@@ -230,7 +227,7 @@ export default function AppCard({
             type="button"
             onClick={handleAddToWorkspace}
             disabled={wsPending || inWorkspace}
-            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 active:scale-95 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 disabled:opacity-50"
             aria-label={inWorkspace ? `${address} already in workspace` : `Add ${address} to workspace`}
             title={inWorkspace ? 'Added' : 'Add to workspace'}
           >
@@ -250,7 +247,7 @@ export default function AppCard({
           <button
             type="button"
             onClick={() => onViewDetails(app)}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-brand-600 transition-colors hover:bg-brand-50 active:scale-95"
+            className="ml-auto inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-brand-700 transition-colors hover:bg-brand-50"
             aria-label={`View details for ${address}`}
             title="Details"
           >

@@ -27,7 +27,10 @@ export default function App() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <Loader2 className="h-8 w-8 animate-spin text-brand-600" />
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+          <p className="text-sm font-medium text-slate-500">Loading…</p>
+        </div>
       </div>
     )
   }
@@ -56,18 +59,15 @@ function AppContent({ config: appConfig }: { config: PlanningIndexSearchConfig |
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <header className="border-b border-slate-200 bg-brand-600">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-500">
-              <Search className="h-5 w-5 text-white" strokeWidth={2.5} />
+      <header className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded bg-brand-700">
+              <Search className="h-4 w-4 text-white" strokeWidth={2} />
             </div>
-            <div>
-              <h1 className="font-display text-lg font-bold text-white">
-                Planning Index Search
-              </h1>
-              <p className="text-xs text-brand-200">Renovation in progress</p>
-            </div>
+            <h1 className="text-base font-semibold text-slate-900">
+              Planning Index
+            </h1>
           </div>
           {appConfig?.isLoggedIn && (
             <div className="flex items-center gap-2">
@@ -76,22 +76,22 @@ function AppContent({ config: appConfig }: { config: PlanningIndexSearchConfig |
                   type="button"
                   onClick={() => openMyApps('workspace')}
                   aria-label={`Open workspace, ${workspaceCount} leads in pipeline`}
-                  className="inline-flex items-center gap-2 rounded-lg bg-brand-700 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-800 active:scale-95"
+                  className="inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100"
                 >
                   <Briefcase className="h-4 w-4" />
                   <span className="hidden sm:inline">Workspace</span>
-                  <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-accent-500 px-1.5 text-xs font-semibold text-white">
+                  <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded bg-slate-200 px-1.5 text-xs font-semibold text-slate-700">
                     {workspaceCount}
                   </span>
                 </button>
               )}
-              <div className="flex items-center gap-2 rounded-lg bg-brand-700 px-3 py-1.5">
-                <User className="h-4 w-4 text-brand-200" />
-                <span className="text-sm font-medium text-white">
+              <div className="flex items-center gap-2 rounded-md bg-slate-100 px-3 py-1.5">
+                <User className="h-4 w-4 text-slate-500" />
+                <span className="text-sm font-medium text-slate-700">
                   User #{appConfig.userId}
                 </span>
                 {appConfig.isAdmin && (
-                  <span className="badge bg-accent-500 text-white">Admin</span>
+                  <span className="badge bg-brand-700 text-white">Admin</span>
                 )}
               </div>
             </div>

@@ -6,23 +6,26 @@ export function getLeadTier(score: number): LeadTier {
   return 'cold'
 }
 
-export const LEAD_TIER_COLORS: Record<LeadTier, { dot: string; label: string; text: string; bg: string }> = {
+export const LEAD_TIER_COLORS: Record<LeadTier, { dot: string; label: string; text: string; bg: string; border: string }> = {
   hot: {
-    dot: 'bg-success-500',
-    label: 'Hot lead',
-    text: 'text-success-700',
-    bg: 'bg-success-50',
+    dot: 'bg-accent-500',
+    label: 'High priority',
+    text: 'text-accent-700',
+    bg: 'bg-accent-50',
+    border: 'border-accent-200',
   },
   warm: {
-    dot: 'bg-warning-500',
-    label: 'Warm lead',
-    text: 'text-warning-700',
-    bg: 'bg-warning-50',
-  },
-  cold: {
     dot: 'bg-slate-400',
-    label: 'Cold lead',
+    label: 'Medium priority',
     text: 'text-slate-600',
     bg: 'bg-slate-100',
+    border: 'border-slate-300',
+  },
+  cold: {
+    dot: 'bg-slate-300',
+    label: 'Low priority',
+    text: 'text-slate-500',
+    bg: 'bg-slate-50',
+    border: 'border-slate-200',
   },
 }

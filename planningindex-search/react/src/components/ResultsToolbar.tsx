@@ -39,7 +39,6 @@ export default function ResultsToolbar({ apps, loading }: ResultsToolbarProps) {
   const [prefsOpen, setPrefsOpen] = useState(false)
   const prefersReducedMotion = usePrefersReducedMotion()
 
-  const hasMore = false
   const showingAll = apps.length > 0 && apps.length >= total
   const canSaveSearch =
     advancedFilterCount(filters) > 0 || !!filters.search || !!activeQuickFilter
@@ -78,11 +77,10 @@ export default function ResultsToolbar({ apps, loading }: ResultsToolbarProps) {
     <div
       role="toolbar"
       aria-label="Results controls"
-      className={`sticky z-20 border-b border-slate-200 bg-white/95 backdrop-blur-md transition-shadow ${
-        'top-[var(--pi-header-height,0px)]'
-      } shadow-soft`}
+      className="sticky z-20 border-b border-slate-200 bg-white/95 backdrop-blur-sm transition-shadow"
+      style={{ top: 'var(--pi-header-height, 0px)' }}
     >
-      <div className="mx-auto max-w-7xl px-4 py-2.5 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-2 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           {/* Left cluster: count + filter chips */}
           <div className="flex flex-wrap items-center gap-2">
@@ -142,7 +140,6 @@ export default function ResultsToolbar({ apps, loading }: ResultsToolbarProps) {
               {filters.highValueOnly && (
                 <FilterChip
                   label="High Value"
-                  color="success"
                   onRemove={() => {
                     toggleHighValue()
                     runSearch()
@@ -152,7 +149,6 @@ export default function ResultsToolbar({ apps, loading }: ResultsToolbarProps) {
               {filters.constructionOnly && (
                 <FilterChip
                   label="Construction"
-                  color="brand"
                   onRemove={() => {
                     toggleConstruction()
                     runSearch()
@@ -162,7 +158,7 @@ export default function ResultsToolbar({ apps, loading }: ResultsToolbarProps) {
             </div>
           </div>
 
-          {/* Right cluster: controls — wraps on mobile, icon-only on narrow */}
+          {/* Right cluster: controls */}
           <div className="flex flex-wrap items-center gap-2">
             {showSelectionControls && (
               <SelectAllCheckbox apps={apps} />
@@ -174,7 +170,7 @@ export default function ResultsToolbar({ apps, loading }: ResultsToolbarProps) {
                 onClick={handleExport}
                 disabled={exporting || apps.length === 0}
                 aria-label={`Export ${selectedIds.size > 0 ? selectedIds.size : apps.length} applications to CSV`}
-                className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-sm font-medium text-slate-700 ring-1 ring-inset ring-slate-300 transition-colors hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-md bg-white px-3 py-1.5 text-sm font-medium text-slate-600 ring-1 ring-inset ring-slate-200 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Download className="h-4 w-4" />
                 <span className="hidden whitespace-nowrap lg:inline">
@@ -195,7 +191,7 @@ export default function ResultsToolbar({ apps, loading }: ResultsToolbarProps) {
               aria-disabled={!canSaveSearch}
               aria-pressed={false}
               title={canSaveSearch ? 'Save this search' : 'Set a filter first'}
-              className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-sm font-medium text-slate-700 ring-1 ring-inset ring-slate-300 transition-colors hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-md bg-white px-3 py-1.5 text-sm font-medium text-slate-600 ring-1 ring-inset ring-slate-200 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Bookmark className="h-4 w-4" />
               <span className="hidden whitespace-nowrap lg:inline">Save Search</span>
@@ -210,7 +206,7 @@ export default function ResultsToolbar({ apps, loading }: ResultsToolbarProps) {
                 onClick={() => setPrefsOpen((v) => !v)}
                 aria-label="Pagination preferences"
                 aria-expanded={prefsOpen}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-600 ring-1 ring-inset ring-slate-300 transition-colors hover:bg-slate-50 active:scale-95"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-white text-slate-500 ring-1 ring-inset ring-slate-200 transition-colors hover:bg-slate-50 hover:text-slate-900"
               >
                 <Settings2 className="h-4 w-4" />
               </button>
@@ -221,12 +217,12 @@ export default function ResultsToolbar({ apps, loading }: ResultsToolbarProps) {
                     onClick={() => setPrefsOpen(false)}
                     aria-hidden="true"
                   />
-                  <div className="absolute right-0 z-40 mt-2 w-64 rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
+                  <div className="absolute right-0 z-40 mt-2 w-64 rounded-lg border border-slate-200 bg-white p-4 shadow-elevated">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Pagination
                     </p>
                     <div className="mt-3 space-y-2">
-                      <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
+                      <label className="flex cursor-pointer items-center justify-between gap-3 rounded-md px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
                         <span>Infinite scroll</span>
                         <input
                           type="checkbox"
@@ -235,7 +231,7 @@ export default function ResultsToolbar({ apps, loading }: ResultsToolbarProps) {
                           onChange={(e) =>
                             setPaginationMode(e.target.checked ? 'infinite' : 'button')
                           }
-                          className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                          className="h-4 w-4 rounded border-slate-300 text-accent-600 focus:ring-accent-500"
                         />
                       </label>
                     </div>
@@ -262,28 +258,18 @@ export default function ResultsToolbar({ apps, loading }: ResultsToolbarProps) {
 
 function FilterChip({
   label,
-  color = 'slate',
   onRemove,
 }: {
   label: string
-  color?: 'slate' | 'success' | 'brand'
   onRemove: () => void
 }) {
-  const colorClasses = {
-    slate: 'bg-slate-100 text-slate-700 hover:bg-slate-200',
-    success: 'bg-success-100 text-success-700 hover:bg-success-200',
-    brand: 'bg-brand-100 text-brand-700 hover:bg-brand-200',
-  }
-
   return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium capitalize transition-colors ${colorClasses[color]}`}
-    >
+    <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium capitalize text-slate-700 transition-colors hover:bg-slate-200">
       {label}
       <button
         type="button"
         onClick={onRemove}
-        className="ml-0.5 inline-flex items-center rounded-full p-0.5 hover:bg-black/10"
+        className="ml-0.5 inline-flex items-center rounded p-0.5 hover:bg-black/10"
         aria-label={`Remove ${label} filter`}
       >
         <X className="h-3 w-3" />

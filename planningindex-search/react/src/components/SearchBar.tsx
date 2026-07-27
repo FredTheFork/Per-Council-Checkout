@@ -13,7 +13,6 @@ export default function SearchBar({ inputRef }: SearchBarProps) {
   const ref = inputRef ?? internalRef
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Keep input in sync when filters.search changes externally (e.g. keyword chip click)
   useEffect(() => {
     setInputValue(filters.search ?? '')
   }, [filters.search])
@@ -58,8 +57,8 @@ export default function SearchBar({ inputRef }: SearchBarProps) {
     <div className="relative flex items-center gap-2">
       <div className="relative flex-1">
         <SearchIcon
-          className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400"
-          strokeWidth={2.25}
+          className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+          strokeWidth={2}
         />
         <input
           ref={ref}
@@ -67,18 +66,18 @@ export default function SearchBar({ inputRef }: SearchBarProps) {
           value={inputValue}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          placeholder="Search by keyword, address, or reference…"
+          placeholder="Search by keyword, address, or reference"
           aria-label="Search planning applications"
-          className="h-14 w-full rounded-full border-0 bg-white py-3 pl-12 pr-12 text-base text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 transition-shadow duration-200 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-brand-500"
+          className="h-11 w-full rounded-lg border-0 bg-white py-2.5 pl-10 pr-10 text-sm text-slate-900 ring-1 ring-inset ring-slate-300 transition-shadow duration-200 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-accent-500"
         />
         {inputValue && (
           <button
             type="button"
             onClick={handleClear}
             aria-label="Clear search"
-            className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 active:scale-90"
+            className="absolute right-2.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         )}
       </div>
@@ -87,12 +86,12 @@ export default function SearchBar({ inputRef }: SearchBarProps) {
         onClick={() => triggerSearch(inputValue)}
         disabled={loading}
         aria-label="Search"
-        className="inline-flex h-14 items-center gap-2 rounded-full bg-accent-500 px-6 text-base font-semibold text-white shadow-sm transition-all duration-200 hover:bg-accent-600 active:scale-95 focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex h-11 items-center gap-2 rounded-lg bg-brand-700 px-5 text-sm font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-brand-800 focus-visible:ring-accent-500 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {loading ? (
-          <Loader2 className="h-5 w-5 animate-spin" />
+          <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
-          <SearchIcon className="h-5 w-5" strokeWidth={2.5} />
+          <SearchIcon className="h-4 w-4" strokeWidth={2} />
         )}
         <span className="hidden sm:inline">Search</span>
       </button>

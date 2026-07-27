@@ -97,9 +97,9 @@ export default function AppListRow({
       onKeyDown={handleKeyDown}
       role="row"
       aria-label={ariaLabel}
-      className={`group flex items-center gap-3 border-b border-slate-100 px-4 py-2.5 transition-colors hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset ${
-        selected ? 'bg-brand-50' : ''
-      } ${highValue ? 'border-l-4 border-l-accent-500' : ''}`}
+      className={`group flex items-center gap-3 border-b border-slate-100 px-4 py-3 transition-colors hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-inset ${
+        selected ? 'bg-accent-50' : ''
+      }`}
     >
       {/* Checkbox */}
       <label className="flex flex-shrink-0 cursor-pointer items-center">
@@ -107,14 +107,14 @@ export default function AppListRow({
           type="checkbox"
           checked={selected}
           onChange={() => onToggleSelect(app.id)}
-          className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+          className="h-4 w-4 rounded border-slate-300 text-accent-600 focus:ring-accent-500"
           aria-label={`Select ${address}`}
         />
       </label>
 
       {/* Lead score dot */}
       <span
-        className={`inline-flex h-2.5 w-2.5 flex-shrink-0 rounded-full ${tierColor.dot}`}
+        className={`inline-flex h-2 w-2 flex-shrink-0 rounded-full ${tierColor.dot}`}
         title={`${tierColor.label}, score ${score}`}
         aria-label={`${tierColor.label}, score ${score}`}
       />
@@ -131,12 +131,17 @@ export default function AppListRow({
         title={address}
       >
         {address}
+        {highValue && (
+          <span className="ml-2 inline-flex items-center rounded bg-brand-700 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+            High Value
+          </span>
+        )}
       </span>
 
       {/* Value */}
       <span className="hidden w-24 flex-shrink-0 text-right text-sm font-semibold text-slate-700 sm:block">
         {estPrice ? (
-          <span className={highValue ? 'text-accent-600' : ''}>{estPrice}</span>
+          <span className={highValue ? 'text-brand-700' : ''}>{estPrice}</span>
         ) : (
           <span className="text-slate-300">—</span>
         )}
@@ -148,7 +153,7 @@ export default function AppListRow({
       </span>
 
       {/* Lead score number */}
-      <span className={`hidden w-10 flex-shrink-0 text-right text-xs font-bold ${tierColor.text} lg:block`}>
+      <span className={`hidden w-10 flex-shrink-0 text-right text-xs font-semibold ${tierColor.text} lg:block`}>
         {score}
       </span>
 
@@ -163,12 +168,12 @@ export default function AppListRow({
           type="button"
           onClick={handleSave}
           disabled={savePending}
-          className="rounded p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 active:scale-90 disabled:opacity-50"
+          className="rounded p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 disabled:opacity-50"
           aria-label={saved ? `Unsave ${address}` : `Save ${address}`}
           title={saved ? 'Saved' : 'Save'}
         >
           {saved ? (
-            <BookmarkCheck className="h-4 w-4 text-brand-600" />
+            <BookmarkCheck className="h-4 w-4 text-accent-600" />
           ) : (
             <Bookmark className="h-4 w-4" />
           )}
@@ -178,7 +183,7 @@ export default function AppListRow({
           type="button"
           onClick={handleAddToWorkspace}
           disabled={wsPending || inWorkspace}
-          className="rounded p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 active:scale-90 disabled:opacity-50"
+          className="rounded p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 disabled:opacity-50"
           aria-label={inWorkspace ? `${address} already in workspace` : `Add ${address} to workspace`}
           title={inWorkspace ? 'Added' : 'Add to workspace'}
         >
@@ -192,7 +197,7 @@ export default function AppListRow({
         <button
           type="button"
           onClick={() => onViewDetails(app)}
-          className="rounded p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-brand-600 active:scale-90"
+          className="rounded p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-brand-700"
           aria-label={`View details for ${address}`}
           title="Details"
         >
