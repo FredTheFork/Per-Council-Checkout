@@ -60,7 +60,7 @@ function AppContent({ config: appConfig }: { config: PlanningIndexSearchConfig |
       <SearchHeader searchInputRef={searchInputRef} />
 
       {/* Main content */}
-      <main className="mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8">
+      <main>
         <ResultsArea />
       </main>
 
