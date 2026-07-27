@@ -220,33 +220,72 @@ export default function MapView() {
         },
       })
 
-      // Heatmap (hidden by default)
+      // Heatmap — density-based, zoom-responsive, fades to circle pins at high zoom
       map.addLayer({
         id: 'heatmap-layer',
         type: 'heatmap',
         source: 'planning-apps',
+        maxzoom: 15,
         layout: { visibility: 'none' },
         paint: {
-          'heatmap-weight': [
-            'interpolate',
-            ['linear'],
-            ['get', 'est_value_numeric'],
-            0, 0,
-            100000, 1,
-            500000, 3,
+          // Each point contributes equally — pure density heatmap
+          'heatmap-weight': 1,
+          // Intensity (overall multiplier) climbs with zoom so dense areas stay vivid
+          'heatmap-intensity': [
+            'interpolate', ['linear'], ['zoom'],
+            0, 1,
+            9, 3,
+            14, 5,
           ],
+          // Classic heatmap color ramp: transparent → blue → cyan → white → peach → orange → red
           'heatmap-color': [
-            'interpolate',
-            ['linear'],
-            ['heatmap-density'],
-            0, 'rgba(0, 0, 255, 0)',
-            0.33, '#4f6a93',
-            0.66, '#f97316',
-            1, '#dc2626',
+            'interpolate', ['linear'], ['heatmap-density'],
+            0,   'rgba(33,102,172,0)',
+            0.2, 'rgb(103,169,207)',
+            0.4, 'rgb(209,229,240)',
+            0.6, 'rgb(253,219,199)',
+            0.8, 'rgb(239,138,98)',
+            1,   'rgb(178,24,43)',
           ],
-          'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 0, 30, 9, 50],
-          'heatmap-intensity': 1,
-          'heatmap-opacity': 0.7,
+          // Influence radius grows with zoom so clusters stay visible at any level
+          'heatmap-radius': [
+            'interpolate', ['linear'], ['zoom'],
+            0,  15,
+            5,  20,
+            9,  30,
+            14, 50,
+          ],
+          // Fade heatmap out as circle pins become readable
+          'heatmap-opacity': [
+            'interpolate', ['linear'], ['zoom'],
+            11, 1,
+            14, 0,
+          ],
+        },
+      })
+
+      // Individual circle pins shown at high zoom while heatmap is active
+      map.addLayer({
+        id: 'heatmap-points',
+        type: 'circle',
+        source: 'planning-apps',
+        minzoom: 11,
+        layout: { visibility: 'none' },
+        filter: ['!', ['has', 'point_count']],
+        paint: {
+          'circle-radius': [
+            'interpolate', ['linear'], ['zoom'],
+            11, 2,
+            14, 6,
+          ],
+          'circle-color': ['get', 'marker_color'],
+          'circle-stroke-width': 1.5,
+          'circle-stroke-color': '#ffffff',
+          'circle-opacity': [
+            'interpolate', ['linear'], ['zoom'],
+            11, 0,
+            13, 1,
+          ],
         },
       })
 
@@ -284,6 +323,25 @@ export default function MapView() {
       setPopupCoords(coords)
     })
 
+    // Heatmap pin click → popup
+    map.on('click', 'heatmap-points', (e) => {
+      const features = map.queryRenderedFeatures(e.point, { layers: ['heatmap-points'] })
+      const f = features[0]
+      if (!f) return
+      const geom = f.geometry as GeoJSON.Point
+      const coords: [number, number] = geom.coordinates as [number, number]
+      const postId = f.properties?.postId as string | undefined
+      const app = mapAppsRef.current.find((a) => String(a.id) === postId) || null
+      setPopupApp(app)
+      setPopupCoords(coords)
+    })
+
+    // Click empty map → close popup
+    map.on('click', (e) => {
+      const features = map.queryRenderedFeatures(e.point, { layers: ['clusters', 'unclustered-point', 'heatmap-points'] })
+      if (features.length === 0) closePopup()
+    })
+
     // Cursor
     const setPointer = () => (map.getCanvas().style.cursor = 'pointer')
     const setDefault = () => (map.getCanvas().style.cursor = '')
@@ -291,6 +349,8 @@ export default function MapView() {
     map.on('mouseleave', 'clusters', setDefault)
     map.on('mouseenter', 'unclustered-point', setPointer)
     map.on('mouseleave', 'unclustered-point', setDefault)
+    map.on('mouseenter', 'heatmap-points', setPointer)
+    map.on('mouseleave', 'heatmap-points', setDefault)
 
     // Resize observer
     const resizeObserver = new ResizeObserver(() => map.resize())
@@ -444,8 +504,10 @@ export default function MapView() {
         map.setLayoutProperty(layer, 'visibility', 'none')
       }
       map.setLayoutProperty('heatmap-layer', 'visibility', 'visible')
+      map.setLayoutProperty('heatmap-points', 'visibility', 'visible')
     } else {
       map.setLayoutProperty('heatmap-layer', 'visibility', 'none')
+      map.setLayoutProperty('heatmap-points', 'visibility', 'none')
       for (const layer of MARKER_LAYERS) {
         map.setLayoutProperty(layer, 'visibility', 'visible')
       }
@@ -482,10 +544,12 @@ export default function MapView() {
 
     const container = document.createElement('div')
     const popup = new mapboxgl.Popup({
-      closeOnClick: true,
-      maxWidth: '320px',
-      offset: 12,
+      closeButton: false,
+      closeOnClick: false,
+      maxWidth: 'none',
+      offset: 14,
       anchor: 'bottom',
+      className: 'pi-map-popup',
     })
       .setLngLat(popupCoords)
       .setDOMContent(container)

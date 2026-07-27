@@ -60,6 +60,17 @@
 }
 
 @layer utilities {
+  /* Strip Mapbox popup chrome so our React MapPopup card is the only visible container */
+  .pi-map-popup .mapboxgl-popup-content {
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    border-radius: 0;
+  }
+  .pi-map-popup .mapboxgl-popup-tip {
+    display: none;
+  }
+
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: #cbd5e1 transparent;
