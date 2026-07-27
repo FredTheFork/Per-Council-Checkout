@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Loader as Loader2, X, Download, Bookmark, Settings2 } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Loader as Loader2, X, Download, Bookmark, Settings2, ChevronUp } from 'lucide-react'
 import { useSearchContext } from '../context/SearchContext'
 import { advancedFilterCount } from '../utils/advancedFilters'
 import { exportAppsToCsv } from '../utils/csvExport'
@@ -40,6 +40,32 @@ export default function ResultsToolbar({ apps, loading }: ResultsToolbarProps) {
   const [prefsOpen, setPrefsOpen] = useState(false)
   const prefersReducedMotion = usePrefersReducedMotion()
 
+  const [collapsed, setCollapsed] = useState(false)
+  const lastScrollY = useRef(0)
+  const collapsingRef = useRef(false)
+
+  useEffect(() => {
+    if (prefersReducedMotion) return
+    const onScroll = () => {
+      const y = window.scrollY
+      if (y < 80) {
+        setCollapsed(false)
+        lastScrollY.current = y
+        return
+      }
+      if (y > lastScrollY.current + 8 && !collapsingRef.current) {
+        setCollapsed(true)
+        collapsingRef.current = true
+      } else if (y < lastScrollY.current - 8 && collapsingRef.current) {
+        setCollapsed(false)
+        collapsingRef.current = false
+      }
+      lastScrollY.current = y
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [prefersReducedMotion])
+
   const showingAll = apps.length > 0 && apps.length >= total
   const canSaveSearch =
     advancedFilterCount(filters) > 0 || !!filters.search || !!activeQuickFilter
@@ -78,11 +104,13 @@ export default function ResultsToolbar({ apps, loading }: ResultsToolbarProps) {
     <div
       role="toolbar"
       aria-label="Results controls"
-      className="sticky z-20 border-b border-slate-200 bg-white/95 backdrop-blur-sm transition-shadow"
+      className={`sticky z-20 border-b border-slate-200 bg-white/95 backdrop-blur-sm transition-all duration-300 ease-out ${
+        collapsed ? '-translate-y-full opacity-0 shadow-none' : 'translate-y-0 opacity-100 shadow-sm'
+      }`}
       style={{ top: 'var(--pi-header-height, 0px)' }}
     >
-      <div className="mx-auto max-w-7xl px-4 py-2 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mx-auto max-w-7xl px-4 py-1.5 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
           {/* Left cluster: count + filter chips */}
           <div className="flex flex-wrap items-center gap-2">
             {showCount && (
@@ -261,6 +289,19 @@ export default function ResultsToolbar({ apps, loading }: ResultsToolbarProps) {
           </div>
         </div>
       </div>
+
+      {/* Floating re-expand button when collapsed */}
+      {collapsed && (
+        <button
+          type="button"
+          onClick={() => setCollapsed(false)}
+          aria-label="Show toolbar"
+          className="fixed left-1/2 z-30 -translate-x-1/2 rounded-b-lg border border-t-0 border-slate-200 bg-white/95 px-3 py-1 shadow-md backdrop-blur-sm transition-colors hover:bg-slate-50"
+          style={{ top: 'var(--pi-header-height, 0px)' }}
+        >
+          <ChevronUp className="h-4 w-4 text-slate-500" />
+        </button>
+      )}
     </div>
   )
 }

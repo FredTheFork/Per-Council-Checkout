@@ -288,10 +288,10 @@ function DetailContent({
     <div className="flex flex-col">
       {/* Hero section */}
       <div className="px-5 pt-5">
-        <span className="text-xs font-semibold uppercase tracking-wide text-accent-600">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-accent-600">
           {councilName}
         </span>
-        <h1 className="mt-1.5 text-xl font-bold leading-tight text-slate-900">
+        <h1 className="mt-1.5 font-display text-xl font-semibold leading-snug tracking-tight text-slate-900">
           {address}
         </h1>
 
@@ -379,7 +379,7 @@ function DetailContent({
         </h3>
         {description ? (
           <div
-            className="prose prose-sm max-w-none text-slate-600 [&_a]:text-brand-600 [&_a]:underline [&_p]:mb-2 [&_p]:leading-relaxed"
+            className="prose prose-sm max-w-none font-body text-[13px] leading-relaxed text-slate-600 [&_a]:text-brand-600 [&_a]:underline [&_p]:mb-2 [&_p]:leading-relaxed"
             dangerouslySetInnerHTML={{ __html: description }}
           />
         ) : (

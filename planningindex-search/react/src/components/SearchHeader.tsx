@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { SlidersHorizontal, BookmarkCheck } from 'lucide-react'
+import { SlidersHorizontal, BookmarkCheck, Briefcase } from 'lucide-react'
 import SearchBar from './SearchBar'
 import QuickFilterChips from './QuickFilterChips'
 import FiltersPanel from './FiltersPanel'
@@ -12,11 +12,12 @@ interface SearchHeaderProps {
 }
 
 export default function SearchHeader({ searchInputRef }: SearchHeaderProps) {
-  const { filters, savedApps, isMyAppsOpen, openMyApps } = useSearchContext()
+  const { filters, savedApps, isMyAppsOpen, openMyApps, workspaceApps } = useSearchContext()
   const [panelOpen, setPanelOpen] = useState(false)
   const headerRef = useRef<HTMLDivElement>(null)
   const count = advancedFilterCount(filters)
   const savedCount = savedApps.length
+  const workspaceCount = workspaceApps.length
 
   useEffect(() => {
     const header = headerRef.current
@@ -43,6 +44,20 @@ export default function SearchHeader({ searchInputRef }: SearchHeaderProps) {
         </div>
         <div className="mt-2.5 flex items-center justify-end gap-2">
           <div className="flex items-center gap-2">
+            {config.isLoggedIn() && workspaceCount > 0 && (
+              <button
+                type="button"
+                onClick={() => openMyApps('workspace')}
+                aria-label={`Open workspace, ${workspaceCount} leads in pipeline`}
+                className="inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 ring-1 ring-inset ring-slate-200 transition-colors hover:bg-slate-50 hover:text-slate-900"
+              >
+                <Briefcase className="h-4 w-4" />
+                <span className="hidden sm:inline">Workspace</span>
+                <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded bg-slate-200 px-1.5 text-xs font-semibold text-slate-700">
+                  {workspaceCount}
+                </span>
+              </button>
+            )}
             {config.isLoggedIn() && (
               <button
                 type="button"
