@@ -4,6 +4,7 @@ import { useSearchContext } from '../context/SearchContext'
 import { sortApps } from '../utils/sortApps'
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion'
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
+import { useRovingFocus } from '../hooks/useRovingFocus'
 import type { PlanningApp } from '../types'
 import AppCard from './AppCard'
 import AppListRow from './AppListRow'
@@ -49,6 +50,11 @@ export default function ResultsArea() {
     () => sortApps(apps, sort, filters),
     [apps, sort, filters],
   )
+
+  const rovingFocus = useRovingFocus({
+    itemCount: sortedApps.length,
+    enabled: view !== 'map' && !loading,
+  })
 
   const handleToggleSave = useCallback(
     (id: number) => {
@@ -106,84 +112,114 @@ export default function ResultsArea() {
   // Map view
   if (view === 'map') {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 pi-fade-in" key={`map-${view}`}>
         <ResultsToolbar apps={[]} loading={loading} />
         <MapView />
       </div>
     )
   }
 
+  const viewKey = `${view}-${loading}`
+
   return (
     <div className="space-y-4">
       <ResultsToolbar apps={sortedApps} loading={loading} />
 
+      {/* Skip to results link for screen readers */}
+      <a
+        href="#pi-results"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-brand-600 focus:px-4 focus:py-2 focus:text-white"
+      >
+        Skip to results
+      </a>
+
       {/* Grid or List */}
-      {loading && apps.length === 0 ? (
-        view === 'list' ? (
+      <div
+        id="pi-results"
+        ref={rovingFocus.containerRef}
+        key={viewKey}
+        className={loading && apps.length === 0 ? '' : 'pi-fade-in'}
+      >
+        {loading && apps.length === 0 ? (
+          view === 'list' ? (
+            <div className="card overflow-hidden">
+              {Array.from({ length: SKELETON_LIST_COUNT }).map((_, i) => (
+                <SkeletonRow key={i} />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {Array.from({ length: SKELETON_GRID_COUNT }).map((_, i) => (
+                <SkeletonCard key={i} />
+              ))}
+            </div>
+          )
+        ) : view === 'list' ? (
           <div className="card overflow-hidden">
-            {Array.from({ length: SKELETON_LIST_COUNT }).map((_, i) => (
-              <SkeletonRow key={i} />
+            {/* Column header */}
+            <div className="hidden items-center gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-400 md:flex">
+              <span className="w-4" />
+              <span className="w-2.5" />
+              <span className="w-28">Council</span>
+              <span className="flex-1">Address</span>
+              <span className="w-24 text-right sm:block">Value</span>
+              <span className="hidden w-24 lg:block">Date</span>
+              <span className="hidden w-10 text-right lg:block">Score</span>
+              <span className="hidden w-28 xl:block">Reference</span>
+              <span className="w-20" />
+            </div>
+            {sortedApps.map((app, idx) => (
+              <AppListRow
+                key={app.id}
+                app={app}
+                saved={savedIds.has(app.id)}
+                inWorkspace={workspaceIds.has(app.id)}
+                selected={selectedIds.has(app.id)}
+                onToggleSave={handleToggleSave}
+                onAddToWorkspace={addToWorkspace}
+                onToggleSelect={toggleSelected}
+                onViewDetails={handleViewDetails}
+                index={idx}
+                getTabIndex={rovingFocus.getTabIndex}
+                setItemRef={rovingFocus.setItemRef}
+                onKeyDown={rovingFocus.handleKeyDown}
+              />
             ))}
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {Array.from({ length: SKELETON_GRID_COUNT }).map((_, i) => (
-              <SkeletonCard key={i} />
+            {sortedApps.map((app, idx) => (
+              <div
+                key={app.id}
+                className={prefersReducedMotion ? '' : 'pi-card-enter'}
+                style={prefersReducedMotion ? undefined : { animationDelay: `${Math.min(idx * 30, 300)}ms` }}
+              >
+                <AppCard
+                  app={app}
+                  saved={savedIds.has(app.id)}
+                  inWorkspace={workspaceIds.has(app.id)}
+                  selected={selectedIds.has(app.id)}
+                  onToggleSave={handleToggleSave}
+                  onAddToWorkspace={addToWorkspace}
+                  onToggleSelect={toggleSelected}
+                  onViewDetails={handleViewDetails}
+                  index={idx}
+                  getTabIndex={rovingFocus.getTabIndex}
+                  setItemRef={rovingFocus.setItemRef}
+                  onKeyDown={rovingFocus.handleKeyDown}
+                />
+              </div>
             ))}
           </div>
-        )
-      ) : view === 'list' ? (
-        <div className="card overflow-hidden">
-          {/* Column header */}
-          <div className="hidden items-center gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-400 md:flex">
-            <span className="w-4" />
-            <span className="w-2.5" />
-            <span className="w-28">Council</span>
-            <span className="flex-1">Address</span>
-            <span className="w-24 text-right sm:block">Value</span>
-            <span className="hidden w-24 lg:block">Date</span>
-            <span className="hidden w-10 text-right lg:block">Score</span>
-            <span className="hidden w-28 xl:block">Reference</span>
-            <span className="w-20" />
-          </div>
-          {sortedApps.map((app) => (
-            <AppListRow
-              key={app.id}
-              app={app}
-              saved={savedIds.has(app.id)}
-              inWorkspace={workspaceIds.has(app.id)}
-              selected={selectedIds.has(app.id)}
-              onToggleSave={handleToggleSave}
-              onAddToWorkspace={addToWorkspace}
-              onToggleSelect={toggleSelected}
-              onViewDetails={handleViewDetails}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {sortedApps.map((app) => (
-            <AppCard
-              key={app.id}
-              app={app}
-              saved={savedIds.has(app.id)}
-              inWorkspace={workspaceIds.has(app.id)}
-              selected={selectedIds.has(app.id)}
-              onToggleSave={handleToggleSave}
-              onAddToWorkspace={addToWorkspace}
-              onToggleSelect={toggleSelected}
-              onViewDetails={handleViewDetails}
-            />
-          ))}
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Loading more indicator / Load more button / End of results */}
       {!loading && apps.length > 0 && (
         <>
           {loadingMore && effectivePaginationMode === 'infinite' && (
             <div
-              className="flex items-center justify-center gap-2 py-4 text-sm text-slate-500"
+              className="flex items-center justify-center gap-2 py-4 text-sm text-slate-500 pi-fade-in"
               role="status"
               aria-live="polite"
             >
@@ -211,7 +247,7 @@ export default function ResultsArea() {
               </button>
             </div>
           ) : showingAll ? (
-            <p className="py-4 text-center text-sm text-slate-400">
+            <p className="py-4 text-center text-sm text-slate-400 pi-fade-in">
               You've reached the end — all {total.toLocaleString('en-GB')} applications loaded
             </p>
           ) : null}

@@ -28,6 +28,10 @@ interface AppCardProps {
   onAddToWorkspace: (id: number) => void
   onToggleSelect: (id: number) => void
   onViewDetails: (app: PlanningApp) => void
+  index?: number
+  getTabIndex?: (index: number) => number | undefined
+  setItemRef?: (index: number) => (el: HTMLElement | null) => void
+  onKeyDown?: (e: React.KeyboardEvent, index: number) => void
 }
 
 function stripHtml(html: string): string {
@@ -51,6 +55,10 @@ export default function AppCard({
   onAddToWorkspace,
   onToggleSelect,
   onViewDetails,
+  index = 0,
+  getTabIndex,
+  setItemRef,
+  onKeyDown,
 }: AppCardProps) {
   const [savePending, setSavePending] = useState(false)
   const [wsPending, setWsPending] = useState(false)
@@ -80,15 +88,40 @@ export default function AppCard({
     Promise.resolve(onAddToWorkspace(app.id)).finally(() => setWsPending(false))
   }, [wsPending, inWorkspace, onAddToWorkspace, app.id])
 
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      onViewDetails(app)
+    } else if (e.key === ' ') {
+      e.preventDefault()
+      onToggleSelect(app.id)
+    } else if (onKeyDown) {
+      onKeyDown(e, index)
+    }
+  }, [onViewDetails, onToggleSelect, app, onKeyDown, index])
+
   const freshnessChipColor = freshness === 'New today'
     ? 'bg-success-100 text-success-700'
     : freshness === 'This week'
       ? 'bg-accent-100 text-accent-700'
       : 'bg-slate-100 text-slate-600'
 
+  const ariaLabel = [
+    councilName,
+    address,
+    estPrice ? `estimated ${estPrice}` : '',
+    dateReceived ? `received ${dateReceived}` : '',
+    `${tierColor.label}, score ${score}`,
+  ].filter(Boolean).join(', ')
+
   return (
     <div
-      className={`card group relative flex flex-col overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-elevated ${
+      ref={setItemRef?.(index)}
+      tabIndex={getTabIndex?.(index) ?? -1}
+      onKeyDown={handleKeyDown}
+      role="article"
+      aria-label={ariaLabel}
+      className={`card group relative flex flex-col overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-elevated focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${
         selected ? 'ring-2 ring-brand-500' : ''
       }`}
     >
@@ -104,7 +137,7 @@ export default function AppCard({
       {/* Checkbox */}
       <div className="absolute left-3 top-3 z-10">
         <label className={`flex cursor-pointer items-center transition-opacity ${
-          selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+          selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
         }`}>
           <input
             type="checkbox"
@@ -124,8 +157,8 @@ export default function AppCard({
           </span>
           <span
             className={`inline-flex h-2.5 w-2.5 flex-shrink-0 rounded-full ${tierColor.dot}`}
-            title={tierColor.label}
-            aria-label={tierColor.label}
+            title={`${tierColor.label}, score ${score}`}
+            aria-label={`${tierColor.label}, score ${score}`}
           />
         </div>
 
@@ -181,8 +214,8 @@ export default function AppCard({
             type="button"
             onClick={handleSave}
             disabled={savePending}
-            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 disabled:opacity-50"
-            aria-label={saved ? 'Unsave application' : 'Save application'}
+            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 active:scale-95 disabled:opacity-50"
+            aria-label={saved ? `Unsave ${address}` : `Save ${address}`}
             title={saved ? 'Saved' : 'Save'}
           >
             {saved ? (
@@ -197,8 +230,8 @@ export default function AppCard({
             type="button"
             onClick={handleAddToWorkspace}
             disabled={wsPending || inWorkspace}
-            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 disabled:opacity-50"
-            aria-label={inWorkspace ? 'In workspace' : 'Add to workspace'}
+            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 active:scale-95 disabled:opacity-50"
+            aria-label={inWorkspace ? `${address} already in workspace` : `Add ${address} to workspace`}
             title={inWorkspace ? 'Added' : 'Add to workspace'}
           >
             {inWorkspace ? (
@@ -217,8 +250,8 @@ export default function AppCard({
           <button
             type="button"
             onClick={() => onViewDetails(app)}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-brand-600 transition-colors hover:bg-brand-50"
-            aria-label="View details"
+            className="ml-auto inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-brand-600 transition-colors hover:bg-brand-50 active:scale-95"
+            aria-label={`View details for ${address}`}
             title="Details"
           >
             <Eye className="h-4 w-4" />

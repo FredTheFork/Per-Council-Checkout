@@ -24,6 +24,10 @@ interface AppListRowProps {
   onAddToWorkspace: (id: number) => void
   onToggleSelect: (id: number) => void
   onViewDetails: (app: PlanningApp) => void
+  index?: number
+  getTabIndex?: (index: number) => number | undefined
+  setItemRef?: (index: number) => (el: HTMLElement | null) => void
+  onKeyDown?: (e: React.KeyboardEvent, index: number) => void
 }
 
 export default function AppListRow({
@@ -35,6 +39,10 @@ export default function AppListRow({
   onAddToWorkspace,
   onToggleSelect,
   onViewDetails,
+  index = 0,
+  getTabIndex,
+  setItemRef,
+  onKeyDown,
 }: AppListRowProps) {
   const [savePending, setSavePending] = useState(false)
   const [wsPending, setWsPending] = useState(false)
@@ -62,9 +70,34 @@ export default function AppListRow({
     Promise.resolve(onAddToWorkspace(app.id)).finally(() => setWsPending(false))
   }, [wsPending, inWorkspace, onAddToWorkspace, app.id])
 
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      onViewDetails(app)
+    } else if (e.key === ' ') {
+      e.preventDefault()
+      onToggleSelect(app.id)
+    } else if (onKeyDown) {
+      onKeyDown(e, index)
+    }
+  }, [onViewDetails, onToggleSelect, app, onKeyDown, index])
+
+  const ariaLabel = [
+    councilName,
+    address,
+    estPrice ? `estimated ${estPrice}` : '',
+    dateReceived ? `received ${dateReceived}` : '',
+    `${tierColor.label}, score ${score}`,
+  ].filter(Boolean).join(', ')
+
   return (
     <div
-      className={`group flex items-center gap-3 border-b border-slate-100 px-4 py-2.5 transition-colors hover:bg-slate-50 ${
+      ref={setItemRef?.(index)}
+      tabIndex={getTabIndex?.(index) ?? -1}
+      onKeyDown={handleKeyDown}
+      role="row"
+      aria-label={ariaLabel}
+      className={`group flex items-center gap-3 border-b border-slate-100 px-4 py-2.5 transition-colors hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset ${
         selected ? 'bg-brand-50' : ''
       } ${highValue ? 'border-l-4 border-l-accent-500' : ''}`}
     >
@@ -82,8 +115,8 @@ export default function AppListRow({
       {/* Lead score dot */}
       <span
         className={`inline-flex h-2.5 w-2.5 flex-shrink-0 rounded-full ${tierColor.dot}`}
-        title={tierColor.label}
-        aria-label={tierColor.label}
+        title={`${tierColor.label}, score ${score}`}
+        aria-label={`${tierColor.label}, score ${score}`}
       />
 
       {/* Council */}
@@ -130,8 +163,8 @@ export default function AppListRow({
           type="button"
           onClick={handleSave}
           disabled={savePending}
-          className="rounded p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 disabled:opacity-50"
-          aria-label={saved ? 'Unsave application' : 'Save application'}
+          className="rounded p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 active:scale-90 disabled:opacity-50"
+          aria-label={saved ? `Unsave ${address}` : `Save ${address}`}
           title={saved ? 'Saved' : 'Save'}
         >
           {saved ? (
@@ -145,8 +178,8 @@ export default function AppListRow({
           type="button"
           onClick={handleAddToWorkspace}
           disabled={wsPending || inWorkspace}
-          className="rounded p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 disabled:opacity-50"
-          aria-label={inWorkspace ? 'In workspace' : 'Add to workspace'}
+          className="rounded p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 active:scale-90 disabled:opacity-50"
+          aria-label={inWorkspace ? `${address} already in workspace` : `Add ${address} to workspace`}
           title={inWorkspace ? 'Added' : 'Add to workspace'}
         >
           {inWorkspace ? (
@@ -159,8 +192,8 @@ export default function AppListRow({
         <button
           type="button"
           onClick={() => onViewDetails(app)}
-          className="rounded p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-brand-600"
-          aria-label="View details"
+          className="rounded p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-brand-600 active:scale-90"
+          aria-label={`View details for ${address}`}
           title="Details"
         >
           <Eye className="h-4 w-4" />

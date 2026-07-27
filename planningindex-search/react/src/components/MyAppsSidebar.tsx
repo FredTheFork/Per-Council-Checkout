@@ -72,15 +72,15 @@ export default function MyAppsSidebar() {
     }
   }, [isMyAppsOpen, selectedAppId])
 
-  // Escape to close
+  // Escape to close — but only if detail panel isn't open (detail takes priority)
   useEffect(() => {
     if (!isMyAppsOpen) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeMyApps()
+      if (e.key === 'Escape' && selectedAppId === null) closeMyApps()
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [isMyAppsOpen, closeMyApps])
+  }, [isMyAppsOpen, closeMyApps, selectedAppId])
 
   const handleRemove = useCallback(
     async (id: number) => {
@@ -175,7 +175,7 @@ export default function MyAppsSidebar() {
         ref={panelRef}
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
-        className={`relative flex h-full w-full max-w-md flex-col bg-white shadow-2xl transition-transform duration-300 ease-out focus:outline-none ${
+        className={`relative flex h-full w-full flex-col bg-white shadow-2xl transition-transform duration-300 ease-out focus:outline-none sm:max-w-md ${
           visible ? 'translate-x-0' : 'translate-x-full'
         }`}
       >

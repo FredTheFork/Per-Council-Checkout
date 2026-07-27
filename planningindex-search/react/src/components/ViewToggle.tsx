@@ -25,8 +25,9 @@ export default function ViewToggle() {
             type="button"
             role="tab"
             aria-selected={active}
+            aria-pressed={active}
             onClick={() => switchView(id)}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-200 ${
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-200 active:scale-95 ${
               active
                 ? 'bg-white text-brand-700 shadow-soft'
                 : 'text-slate-500 hover:text-slate-700'

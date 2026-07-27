@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { Search, User, Loader as Loader2, Briefcase } from 'lucide-react'
 import type { PlanningIndexSearchConfig } from './types'
 import { ToastProvider } from './components/ToastProvider'
@@ -9,6 +9,7 @@ import MyAppsSidebar from './components/MyAppsSidebar'
 import SaveSearchModal from './components/SaveSearchModal'
 import BatchActionBar from './components/BatchActionBar'
 import { SearchProvider, useSearchContext } from './context/SearchContext'
+import { useGlobalKeyboard } from './hooks/useGlobalKeyboard'
 
 export default function App() {
   const [config, setConfig] = useState<PlanningIndexSearchConfig | null>(null)
@@ -43,6 +44,14 @@ export default function App() {
 function AppContent({ config: appConfig }: { config: PlanningIndexSearchConfig | null }) {
   const { workspaceIds, openMyApps } = useSearchContext()
   const workspaceCount = workspaceIds.size
+  const searchInputRef = useRef<HTMLInputElement | null>(null)
+
+  const focusSearch = useCallback(() => {
+    searchInputRef.current?.focus()
+    searchInputRef.current?.select()
+  }, [])
+
+  useGlobalKeyboard({ onFocusSearch: focusSearch })
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -67,7 +76,7 @@ function AppContent({ config: appConfig }: { config: PlanningIndexSearchConfig |
                   type="button"
                   onClick={() => openMyApps('workspace')}
                   aria-label={`Open workspace, ${workspaceCount} leads in pipeline`}
-                  className="inline-flex items-center gap-2 rounded-lg bg-brand-700 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-800"
+                  className="inline-flex items-center gap-2 rounded-lg bg-brand-700 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-800 active:scale-95"
                 >
                   <Briefcase className="h-4 w-4" />
                   <span className="hidden sm:inline">Workspace</span>
@@ -91,7 +100,7 @@ function AppContent({ config: appConfig }: { config: PlanningIndexSearchConfig |
       </header>
 
       {/* Sticky search header */}
-      <SearchHeader />
+      <SearchHeader searchInputRef={searchInputRef} />
 
       {/* Main content */}
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">

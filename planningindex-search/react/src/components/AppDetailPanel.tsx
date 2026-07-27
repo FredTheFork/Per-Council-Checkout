@@ -119,7 +119,7 @@ export default function AppDetailPanel() {
         ref={panelRef}
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
-        className={`relative flex h-full w-full max-w-md flex-col bg-white shadow-2xl transition-transform duration-300 ease-out focus:outline-none ${
+        className={`relative flex h-full w-full flex-col bg-white shadow-2xl transition-transform duration-300 ease-out focus:outline-none sm:max-w-md ${
           visible ? 'translate-x-0' : 'translate-x-full'
         }`}
       >

@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react'
 import { Check, CircleAlert as AlertCircle, Info, X } from 'lucide-react'
+import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion'
 
 type ToastType = 'success' | 'error' | 'info'
 
@@ -14,6 +15,8 @@ interface ToastItem {
   id: number
   message: string
   type: ToastType
+  remaining: number
+  paused: boolean
 }
 
 interface ToastContextValue {
@@ -22,7 +25,8 @@ interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | null>(null)
 
-const TOAST_DURATION = 4000
+const TOAST_DURATION = 2500
+const MAX_VISIBLE = 3
 
 const TYPE_STYLES: Record<ToastType, { bg: string; icon: typeof Check; iconColor: string }> = {
   success: { bg: 'bg-success-600', icon: Check, iconColor: 'text-white' },
@@ -34,6 +38,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([])
   const idCounter = useRef(0)
   const timers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map())
+  const prefersReducedMotion = usePrefersReducedMotion()
 
   const dismiss = useCallback((id: number) => {
     setToasts((prev) => prev.filter((t) => t.id !== id))
@@ -48,11 +53,28 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     (message: string, opts?: { type?: ToastType }) => {
       const id = ++idCounter.current
       const type: ToastType = opts?.type ?? 'success'
-      setToasts((prev) => [...prev, { id, message, type }])
-      const timer = setTimeout(() => dismiss(id), TOAST_DURATION)
+      const item: ToastItem = { id, message, type, remaining: TOAST_DURATION, paused: false }
+
+      setToasts((prev) => {
+        const next = [...prev, item]
+        // Cap at MAX_VISIBLE — dismiss oldest
+        if (next.length > MAX_VISIBLE) {
+          const oldest = next[0]
+          const oldTimer = timers.current.get(oldest.id)
+          if (oldTimer) {
+            clearTimeout(oldTimer)
+            timers.current.delete(oldest.id)
+          }
+          return next.slice(next.length - MAX_VISIBLE)
+        }
+        return next
+      })
+
+      const duration = prefersReducedMotion ? 0 : TOAST_DURATION
+      const timer = setTimeout(() => dismiss(id), duration)
       timers.current.set(id, timer)
     },
-    [dismiss],
+    [dismiss, prefersReducedMotion],
   )
 
   const pauseTimer = useCallback((id: number) => {
@@ -61,12 +83,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       clearTimeout(timer)
       timers.current.delete(id)
     }
+    setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, paused: true } : t)))
   }, [])
 
   const resumeTimer = useCallback(
     (id: number) => {
       const timer = setTimeout(() => dismiss(id), TOAST_DURATION)
       timers.current.set(id, timer)
+      setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, paused: false } : t)))
     },
     [dismiss],
   )
@@ -77,7 +101,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <div
         role="status"
         aria-live="polite"
-        className="pointer-events-none fixed bottom-6 left-1/2 z-[10000] flex -translate-x-1/2 flex-col items-center gap-2 sm:left-auto sm:right-6 sm:translate-x-0"
+        className="pointer-events-none fixed bottom-6 right-6 z-[10000] flex flex-col items-end gap-2"
       >
         {toasts.map((toast) => {
           const style = TYPE_STYLES[toast.type]
@@ -88,24 +112,39 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               aria-atomic="true"
               onMouseEnter={() => pauseTimer(toast.id)}
               onMouseLeave={() => resumeTimer(toast.id)}
-              className={`pointer-events-auto flex items-center gap-2.5 rounded-xl ${style.bg} px-4 py-3 text-sm font-medium text-white shadow-elevated transition-all duration-300 ease-out`}
-              style={{ animation: 'toastSlideIn 0.3s ease-out' }}
+              className={`pointer-events-auto relative flex w-80 max-w-[calc(100vw-3rem)] items-center gap-2.5 overflow-hidden rounded-xl ${style.bg} px-4 py-3 text-sm font-medium text-white shadow-elevated`}
+              style={{
+                animation: prefersReducedMotion
+                  ? undefined
+                  : 'piToastSlideIn var(--pi-transition-base) var(--pi-easing)',
+              }}
             >
               <Icon className={`h-4 w-4 flex-shrink-0 ${style.iconColor}`} strokeWidth={2.5} />
-              <span className="max-w-xs truncate">{toast.message}</span>
+              <span className="flex-1 truncate">{toast.message}</span>
               <button
                 type="button"
                 onClick={() => dismiss(toast.id)}
                 aria-label="Dismiss notification"
-                className="ml-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/20 hover:text-white"
+                className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/20 hover:text-white"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
+              {/* Progress bar */}
+              {!toast.paused && (
+                <div className="absolute bottom-0 left-0 h-0.5 w-full bg-white/30">
+                  <div
+                    className="pi-toast-progress h-full origin-left bg-white/60"
+                    style={{
+                      animationDuration: `${TOAST_DURATION}ms`,
+                    }}
+                  />
+                </div>
+              )}
             </div>
           )
         })}
       </div>
-      <style>{`@keyframes toastSlideIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}`}</style>
+      <style>{`@keyframes piToastSlideIn{from{opacity:0;transform:translateX(100%)}to{opacity:1;transform:translateX(0)}}`}</style>
     </ToastContext.Provider>
   )
 }

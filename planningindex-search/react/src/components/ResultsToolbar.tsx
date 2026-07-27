@@ -162,8 +162,8 @@ export default function ResultsToolbar({ apps, loading }: ResultsToolbarProps) {
             </div>
           </div>
 
-          {/* Right cluster: controls */}
-          <div className="flex items-center gap-2">
+          {/* Right cluster: controls — wraps on mobile, icon-only on narrow */}
+          <div className="flex flex-wrap items-center gap-2">
             {showSelectionControls && (
               <SelectAllCheckbox apps={apps} />
             )}
@@ -174,10 +174,10 @@ export default function ResultsToolbar({ apps, loading }: ResultsToolbarProps) {
                 onClick={handleExport}
                 disabled={exporting || apps.length === 0}
                 aria-label={`Export ${selectedIds.size > 0 ? selectedIds.size : apps.length} applications to CSV`}
-                className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-sm font-medium text-slate-700 ring-1 ring-inset ring-slate-300 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-sm font-medium text-slate-700 ring-1 ring-inset ring-slate-300 transition-colors hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Download className="h-4 w-4" />
-                <span className="hidden whitespace-nowrap sm:inline">
+                <span className="hidden whitespace-nowrap lg:inline">
                   {selectedIds.size > 0 ? `Export (${selectedIds.size})` : 'Export CSV'}
                 </span>
               </button>
@@ -193,11 +193,12 @@ export default function ResultsToolbar({ apps, loading }: ResultsToolbarProps) {
               onClick={openSaveSearchModal}
               disabled={!canSaveSearch}
               aria-disabled={!canSaveSearch}
+              aria-pressed={false}
               title={canSaveSearch ? 'Save this search' : 'Set a filter first'}
-              className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-sm font-medium text-slate-700 ring-1 ring-inset ring-slate-300 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-sm font-medium text-slate-700 ring-1 ring-inset ring-slate-300 transition-colors hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Bookmark className="h-4 w-4" />
-              <span className="hidden whitespace-nowrap md:inline">Save Search</span>
+              <span className="hidden whitespace-nowrap lg:inline">Save Search</span>
             </button>
 
             <SavedSearchesDropdown />
@@ -209,7 +210,7 @@ export default function ResultsToolbar({ apps, loading }: ResultsToolbarProps) {
                 onClick={() => setPrefsOpen((v) => !v)}
                 aria-label="Pagination preferences"
                 aria-expanded={prefsOpen}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-600 ring-1 ring-inset ring-slate-300 transition-colors hover:bg-slate-50"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-600 ring-1 ring-inset ring-slate-300 transition-colors hover:bg-slate-50 active:scale-95"
               >
                 <Settings2 className="h-4 w-4" />
               </button>
