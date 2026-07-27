@@ -72,6 +72,7 @@ export default function MapView() {
   const [showHeatmap, setShowHeatmap] = useState(false)
   const [drawMode, setDrawMode] = useState(false)
   const [drawnPolygon, setDrawnPolygon] = useState<number[][] | null>(null)
+  const [polygonCount, setPolygonCount] = useState<number | null>(null)
   const [popupApp, setPopupApp] = useState<PlanningApp | null>(null)
   const [popupCoords, setPopupCoords] = useState<[number, number] | null>(null)
 
@@ -289,6 +290,31 @@ export default function MapView() {
         },
       })
 
+      // Source + layers for a persisted drawn polygon (fill + outline + vertices)
+      map.addSource('drawn-polygon', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+      })
+      map.addLayer({
+        id: 'drawn-polygon-fill',
+        type: 'fill',
+        source: 'drawn-polygon',
+        paint: {
+          'fill-color': '#1b2534',
+          'fill-opacity': 0.08,
+        },
+      })
+      map.addLayer({
+        id: 'drawn-polygon-outline',
+        type: 'line',
+        source: 'drawn-polygon',
+        paint: {
+          'line-color': '#1b2534',
+          'line-width': 2,
+          'line-dasharray': [2, 1],
+        },
+      })
+
       setMapReady(true)
     })
 
@@ -451,6 +477,9 @@ export default function MapView() {
 
       if (cancelled) return
 
+      // Store unfiltered features so the polygon re-filter effect can reuse them
+      allFeaturesRef.current = features
+
       // Apply drawn polygon filter
       let filteredFeatures = features
       if (drawnPolygonRef.current) {
@@ -458,6 +487,7 @@ export default function MapView() {
           pointInPolygon(f.geometry.coordinates[0], f.geometry.coordinates[1], drawnPolygonRef.current!),
         )
       }
+      setPolygonCount(drawnPolygonRef.current ? filteredFeatures.length : null)
 
       const source = map.getSource('planning-apps') as mapboxgl.GeoJSONSource | undefined
       if (source) {
@@ -493,6 +523,7 @@ export default function MapView() {
   workspaceIdsRef.current = workspaceIds
   const drawnPolygonRef = useRef<number[][] | null>(drawnPolygon)
   drawnPolygonRef.current = drawnPolygon
+  const allFeaturesRef = useRef<GeoJSONFeature[]>([])
 
   // ── Heatmap toggle ──────────────────────────────────────────────────
   useEffect(() => {
@@ -591,11 +622,17 @@ export default function MapView() {
       const draw = new MapboxDraw({
         displayControlsDefault: false,
         controls: { polygon: true, trash: true },
+        styles: [
+          { id: 'draw-fill', type: 'fill', paint: { 'fill-color': '#1b2534', 'fill-opacity': 0.06 } },
+          { id: 'draw-line', type: 'line', paint: { 'line-color': '#1b2534', 'line-width': 2, 'line-dasharray': [2, 1] } },
+          { id: 'draw-vertex', type: 'circle', paint: { 'circle-radius': 4, 'circle-color': '#1b2534', 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff' } },
+        ],
       })
       map.addControl(draw)
       drawRef.current = draw
       draw.changeMode('draw_polygon')
       map.getCanvas().style.cursor = 'crosshair'
+      map.getCanvas().title = 'Click to add points. Double-click or close the shape to finish. Esc to cancel.'
 
       const onCreate = (e: { features: GeoJSON.Feature[] }) => {
         const f = e.features?.[0]
@@ -603,29 +640,96 @@ export default function MapView() {
         const geom = f.geometry as GeoJSON.Polygon
         const coords = geom.coordinates as number[][][]
         const ring = coords[0]
-        if (ring && ring.length >= 3) {
-          setDrawnPolygon(ring)
+        if (ring && ring.length >= 4) {
+          // Drop the closing duplicate point that Draw appends
+          setDrawnPolygon(ring.slice(0, -1))
         }
         setDrawMode(false)
       }
       ;(draw as unknown as { on: (ev: string, cb: (e: { features: GeoJSON.Feature[] }) => void) => void }).on('draw.create', onCreate)
+
+      // Esc cancels the draw
+      const onKey = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+ setDrawMode(false) }
+      }
+      window.addEventListener('keydown', onKey)
+      ;(draw as unknown as { _onKey?: (e: KeyboardEvent) => void })._onKey = onKey
+
+      return () => {
+        window.removeEventListener('keydown', onKey)
+      }
     }
 
     if (!drawMode && drawRef.current) {
+      try { map.removeControl(drawRef.current) } catch { /* noop */ }
+      drawRef.current = null
       map.getCanvas().style.cursor = ''
+      map.getCanvas().title = ''
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drawMode, mapReady])
 
+  // ── Persist drawn polygon as a visible layer + re-filter points ─────
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    if (!map || !mapReady) return
+    const source = map.getSource('drawn-polygon') as mapboxgl.GeoJSONSource | undefined
+    if (!source) return
+
+    if (drawnPolygon && drawnPolygon.length >= 3) {
+      const ring = [...drawnPolygon, drawnPolygon[0]]
+      source.setData({
+        type: 'FeatureCollection',
+        features: [{
+          type: 'Feature',
+          geometry: { type: 'Polygon', coordinates: [ring] },
+          properties: {},
+        }],
+      })
+    } else {
+      source.setData({ type: 'FeatureCollection', features: [] })
+    }
+  }, [drawnPolygon, mapReady])
+
+  // Re-filter the planning-apps source whenever the polygon changes
+  useEffect(() => {
+    if (!mapReady || !mapInstanceRef.current) return
+    const map = mapInstanceRef.current
+    const source = map.getSource('planning-apps') as mapboxgl.GeoJSONSource | undefined
+    if (!source) return
+
+    // Re-run the data effect by toggling the mapApps ref — simplest path is to re-apply filter on current data
+    const allFeatures = allFeaturesRef.current
+    if (!allFeatures) return
+
+    let filtered = allFeatures
+    if (drawnPolygon && drawnPolygon.length >= 3) {
+      filtered = allFeatures.filter((f) =>
+        pointInPolygon(f.geometry.coordinates[0], f.geometry.coordinates[1], drawnPolygon),
+      )
+    }
+    source.setData({ type: 'FeatureCollection', features: filtered })
+    setPolygonCount(filtered.length)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawnPolygon, mapReady])
+
   const handleClearArea = useCallback(() => {
     if (drawRef.current) {
       drawRef.current.deleteAll()
+      const map = mapInstanceRef.current
+      if (map) {
+        try { map.removeControl(drawRef.current) } catch { /* noop */ }
+      }
+      drawRef.current = null
     }
     setDrawnPolygon(null)
     setDrawMode(false)
+    setPolygonCount(null)
     const map = mapInstanceRef.current
     if (map) {
       map.getCanvas().style.cursor = ''
+      map.getCanvas().title = ''
     }
   }, [])
 
@@ -737,10 +841,28 @@ export default function MapView() {
         {drawnPolygon && (
           <span className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white shadow-soft">
             <MapPin className="h-3.5 w-3.5" />
-            Region filter active
+            {polygonCount != null ? `${polygonCount} ${polygonCount === 1 ? 'app' : 'apps'} in area` : 'Region filter active'}
           </span>
         )}
       </div>
+
+      {/* Draw-mode hint banner */}
+      {drawMode && (
+        <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2">
+          <div className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-slate-900/90 px-4 py-2 text-xs font-medium text-white shadow-lg backdrop-blur-sm">
+            <PenTool className="h-3.5 w-3.5" />
+            <span>Click to add points — close the shape or double-click to finish</span>
+            <button
+              type="button"
+              onClick={() => setDrawMode(false)}
+              className="ml-1.5 inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-xs font-medium text-white transition-colors hover:bg-white/25"
+            >
+              <X className="h-3 w-3" />
+              <span>Cancel</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Legend / progress */}
       <div className="absolute bottom-3 left-3 z-10">
