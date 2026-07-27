@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { Check, CircleAlert as AlertCircle, Info, X } from 'lucide-react'
+import { Check, AlertCircle, Info, X } from 'lucide-react'
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion'
 
 type ToastType = 'success' | 'error' | 'info'
