@@ -295,11 +295,14 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     if ('date_from' in partial || 'date_to' in partial) {
       setActiveQuickFilter(null)
     }
-    setFiltersState((prev) => ({ ...prev, ...partial }))
+    const next = { ...filtersRef.current, ...partial }
+    filtersRef.current = next
+    setFiltersState(next)
   }
 
   const clearFilters = (): void => {
     setActiveQuickFilter(null)
+    filtersRef.current = DEFAULT_FILTERS
     setFiltersState(DEFAULT_FILTERS)
     void runSearch()
   }
@@ -309,43 +312,50 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   }
 
   const toggleHighValue = (): void => {
-    const next = !filters.highValueOnly
-    setFiltersState((prev) => ({ ...prev, highValueOnly: next }))
-    setApps(applyClientFilters(rawApps, { ...filtersRef.current, highValueOnly: next }, savedIdsRef.current, recentIdsRef.current, workspaceIdsRef.current))
+    const next = { ...filtersRef.current, highValueOnly: !filtersRef.current.highValueOnly }
+    filtersRef.current = next
+    setFiltersState(next)
+    setApps(applyClientFilters(rawApps, next, savedIdsRef.current, recentIdsRef.current, workspaceIdsRef.current))
     if (rawApps.length === 0) void runSearch()
   }
 
   const toggleConstruction = (): void => {
-    const next = !filters.constructionOnly
-    setFiltersState((prev) => ({ ...prev, constructionOnly: next }))
-    setApps(applyClientFilters(rawApps, { ...filtersRef.current, constructionOnly: next }, savedIdsRef.current, recentIdsRef.current, workspaceIdsRef.current))
+    const next = { ...filtersRef.current, constructionOnly: !filtersRef.current.constructionOnly }
+    filtersRef.current = next
+    setFiltersState(next)
+    setApps(applyClientFilters(rawApps, next, savedIdsRef.current, recentIdsRef.current, workspaceIdsRef.current))
     if (rawApps.length === 0) void runSearch()
   }
 
   const toggleHideSaved = (): void => {
-    const next = !filters.hideSaved
-    setFiltersState((prev) => ({ ...prev, hideSaved: next }))
-    setApps(applyClientFilters(rawApps, { ...filtersRef.current, hideSaved: next }, savedIdsRef.current, recentIdsRef.current, workspaceIdsRef.current))
+    const next = { ...filtersRef.current, hideSaved: !filtersRef.current.hideSaved }
+    filtersRef.current = next
+    setFiltersState(next)
+    setApps(applyClientFilters(rawApps, next, savedIdsRef.current, recentIdsRef.current, workspaceIdsRef.current))
     if (rawApps.length === 0) void runSearch()
   }
 
   const toggleHideViewed = (): void => {
-    const next = !filters.hideViewed
-    setFiltersState((prev) => ({ ...prev, hideViewed: next }))
-    setApps(applyClientFilters(rawApps, { ...filtersRef.current, hideViewed: next }, savedIdsRef.current, recentIdsRef.current, workspaceIdsRef.current))
+    const next = { ...filtersRef.current, hideViewed: !filtersRef.current.hideViewed }
+    filtersRef.current = next
+    setFiltersState(next)
+    setApps(applyClientFilters(rawApps, next, savedIdsRef.current, recentIdsRef.current, workspaceIdsRef.current))
     if (rawApps.length === 0) void runSearch()
   }
 
   const toggleHideWorkspace = (): void => {
-    const next = !filters.hideWorkspace
-    setFiltersState((prev) => ({ ...prev, hideWorkspace: next }))
-    setApps(applyClientFilters(rawApps, { ...filtersRef.current, hideWorkspace: next }, savedIdsRef.current, recentIdsRef.current, workspaceIdsRef.current))
+    const next = { ...filtersRef.current, hideWorkspace: !filtersRef.current.hideWorkspace }
+    filtersRef.current = next
+    setFiltersState(next)
+    setApps(applyClientFilters(rawApps, next, savedIdsRef.current, recentIdsRef.current, workspaceIdsRef.current))
     if (rawApps.length === 0) void runSearch()
   }
 
   const setValueRange = (min: number | undefined, max: number | undefined): void => {
-    setFiltersState((prev) => ({ ...prev, estValueMin: min, estValueMax: max }))
-    setApps(applyClientFilters(rawApps, { ...filtersRef.current, estValueMin: min, estValueMax: max }, savedIdsRef.current, recentIdsRef.current, workspaceIdsRef.current))
+    const next = { ...filtersRef.current, estValueMin: min, estValueMax: max }
+    filtersRef.current = next
+    setFiltersState(next)
+    setApps(applyClientFilters(rawApps, next, savedIdsRef.current, recentIdsRef.current, workspaceIdsRef.current))
     if (rawApps.length === 0) void runSearch()
   }
 
@@ -585,8 +595,8 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     setActiveQuickFilter(null)
     setSortState(search.sort)
     sortRef.current = search.sort
-    setFiltersState(search.filters)
     filtersRef.current = search.filters
+    setFiltersState(search.filters)
 
     const next = savedSearchesRef.current.map((s) =>
       s.id === search.id ? { ...s, lastAppliedAt: now, newCount: 0 } : s,
@@ -661,7 +671,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         }
         setSavedIds(confirmed)
       }
-      if (rawApps.length > 0) {
+      if (rawApps.length > 0 && !loading && !abortRef.current?.signal.aborted) {
         setApps(applyClientFilters(rawApps, filtersRef.current, confirmed ?? savedSet, recentSet, workspaceIdsRef.current))
       }
     } catch {
@@ -700,6 +710,9 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       }
       await refreshSavedState()
       void refreshWorkspaceApps()
+
+      // Fire the initial search so applications load immediately on page load
+      void runSearch()
 
       // Refresh saved search counts after a short delay
       setTimeout(() => {

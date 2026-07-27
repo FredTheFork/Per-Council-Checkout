@@ -5,6 +5,7 @@ import { advancedFilterCount } from '../utils/advancedFilters'
 import { exportAppsToCsv } from '../utils/csvExport'
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion'
 import { useToast } from './ToastProvider'
+import { QUICK_FILTERS } from '../quickFilters'
 import type { PlanningApp } from '../types'
 import SortDropdown from './SortDropdown'
 import ViewToggle from './ViewToggle'
@@ -132,8 +133,16 @@ export default function ResultsToolbar({ apps, loading }: ResultsToolbarProps) {
                 <FilterChip
                   label={activeQuickFilter.replace('_', ' ')}
                   onRemove={() => {
+                    const def = QUICK_FILTERS.find((d) => d.id === activeQuickFilter)
                     setQuickFilter(null)
-                    runSearch()
+                    if (def) {
+                      if (def.type === 'keyword') {
+                        setFilters({ search: undefined })
+                      } else if (def.type === 'date') {
+                        setFilters({ date_from: undefined, date_to: undefined })
+                      }
+                    }
+                    void runSearch()
                   }}
                 />
               )}
